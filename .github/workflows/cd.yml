@@ -40,7 +40,7 @@ jobs:
       - name: JAR 결과물 업로드
         uses: actions/upload-artifact@v4
         with:
-          name: app-jar
+          name: academy-jar
           path: build/libs/*.jar
 
       - name: OpenAPI 결과물 업로드
