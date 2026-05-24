@@ -23,6 +23,20 @@
 
 ---
 
+## 📄 API 테스트 사용법
+
+<details>
+<summary><strong>상세 보기</strong></summary>
+
+
+특정 API에 Try it out을 클릭 후 Examples: 하단에 시나리오에 맞는 예시 데이터를 선택하거나, 원하는 데이터를 입력한 후 Execute합니다.
+
+
+
+</details>
+
+---
+
 ## 🔐 JWT 토큰 사용법
 
 <details>
