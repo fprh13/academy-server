@@ -1,0 +1,46 @@
+name: "⚙️Chore"
+description: "설정, 리팩토링, 기타 작업"
+title: "[Chore] "
+labels: ["chore"]
+body:
+  - type: input
+    id: summary
+    attributes:
+      label: 작업 요약
+      placeholder: 예) 수강신청 리팩토링
+    validations:
+      required: true
+
+  - type: textarea
+    id: reason
+    attributes:
+      label: 작업 이유
+      placeholder: |
+        예)
+        - 코드 가독성 개선
+        - 유지보수성 향상
+    validations:
+      required: true
+
+  - type: textarea
+    id: detail
+    attributes:
+      label: 작업 내용
+      placeholder: |
+        - A 클래스 구조 변경
+        - 메서드명 수정
+    validations:
+      required: true
+
+  - type: textarea
+    id: impact
+    attributes:
+      label: 영향 범위
+      placeholder: |
+        - API 응답 없음
+        - 내부 구조 변경
+
+  - type: textarea
+    id: references
+    attributes:
+      label: References
