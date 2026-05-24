@@ -1,4 +1,4 @@
-package com.example.academy.common.config;
+package com.example.academy.common.infrastructure.config;
 
 import org.springframework.context.annotation.Configuration;
 import org.springframework.web.servlet.config.annotation.ResourceHandlerRegistry;
