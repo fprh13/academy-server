@@ -13,6 +13,7 @@ import com.example.academy.common.presentation.dto.ApiResponse;
 import com.example.academy.support.RestDocsSupport;
 
 class HealthCheckControllerTest extends RestDocsSupport {
+	private static final String API_GUIDE_DOCS_PATH = "docs/api-guide-docs.md";
 
     @Test
     void 서버_상태_체크_2XX() throws Exception {
@@ -27,7 +28,7 @@ class HealthCheckControllerTest extends RestDocsSupport {
 			.andDo(restDocsHandler.document(ResourceDocumentation.resource(ResourceSnippetParameters.builder()
 					.tag("[필독] API 명세서 가이드")
 					.summary("API 사용법")
-					.description("") // TODO: 사용 방식에 대해 작성합니다.
+					.description(readMarkdown(API_GUIDE_DOCS_PATH))
 					.responseSchema(Schema.schema(ApiResponse.class.getSimpleName()))
 					.build())
 				)
