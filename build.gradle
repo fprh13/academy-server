@@ -126,9 +126,7 @@ ext.jacocoExcludes = [
         "**/DomainEntity.class",
 
         // security infra
-        "**/JwtAuthorizationFilter.class",
-        "**/AccessDeniedHandlerImpl.class",
-        "**/AuthenticationEntryPointImpl.class",
+        "**/security/**",
 
         // event
         "**/*Event.class",
