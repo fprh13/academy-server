@@ -107,12 +107,32 @@ tasks.register('copyOasToSwagger', Copy) {
 ext.jacocoExcludes = [
         // main
         "**/AcademyApplication.class",
+
         // dto
         "**/dto/**",
+
         // exception
         "**/exception/**",
+
         // config
         "**/config/**",
+
+        // constants
+        "**/*Constants.class",
+        "**/*ErrorMessages.class",
+
+        // abstract, base
+        "**/AggregateRoot.class",
+        "**/DomainEntity.class",
+
+        // security infra
+        "**/JwtAuthorizationFilter.class",
+        "**/AccessDeniedHandlerImpl.class",
+        "**/AuthenticationEntryPointImpl.class",
+
+        // event
+        "**/*Event.class",
+        "**/*EventHandler.class"
 ]
 
 tasks.named('jacocoTestReport') {
