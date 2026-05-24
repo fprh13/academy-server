@@ -2,11 +2,12 @@ plugins {
     id 'java'
     id 'org.springframework.boot' version '3.5.14'
     id 'io.spring.dependency-management' version '1.1.7'
-    id 'org.asciidoctor.jvm.convert' version '4.0.5'
+    id 'jacoco'
+    id('com.epages.restdocs-api-spec') version '0.19.4'
 }
 
 group = 'com.example'
-version = '0.0.1-SNAPSHOT'
+version = '1.0'
 description = 'academy'
 
 java {
@@ -15,34 +16,135 @@ java {
     }
 }
 
+configurations {
+    compileOnly {
+        extendsFrom annotationProcessor
+    }
+}
+
+jacoco {
+    toolVersion = "0.8.10"
+}
+
 repositories {
     mavenCentral()
 }
 
-ext {
-    set('snippetsDir', file("build/generated-snippets"))
-}
-
 dependencies {
+    // Spring
+    implementation 'org.springframework.boot:spring-boot-starter-web'
     implementation 'org.springframework.boot:spring-boot-starter-data-jpa'
     implementation 'org.springframework.boot:spring-boot-starter-validation'
-    implementation 'org.springframework.boot:spring-boot-starter-web'
-    compileOnly 'org.projectlombok:lombok'
+
+    // DB
     runtimeOnly 'com.h2database:h2'
+
+    // Utils
+    compileOnly 'org.projectlombok:lombok'
     annotationProcessor 'org.projectlombok:lombok'
+
+    // Test
     testImplementation 'org.springframework.boot:spring-boot-starter-test'
-    testImplementation 'org.springframework.restdocs:spring-restdocs-mockmvc'
     testCompileOnly 'org.projectlombok:lombok'
     testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
     testAnnotationProcessor 'org.projectlombok:lombok'
+
+    // OpenAPI Specification
+    implementation 'org.springdoc:springdoc-openapi-ui:1.8.0'
+    testImplementation("com.epages:restdocs-api-spec-mockmvc:0.19.4")
+    testImplementation 'org.springframework.restdocs:spring-restdocs-mockmvc'
+}
+
+
+openapi3 {
+    servers = [
+            { url = "http://localhost:8080" }
+    ]
+    title = '[라이브 클래스] 수강 신청 시스템'
+    description = '수강 신청 시스템의 API 문서입니다.'
+    version = new Date().format("yyyy.MM.dd HH:mm", TimeZone.getTimeZone("Asia/Seoul"))
+    format = 'yaml'
+}
+
+tasks.register('copyOasToSwagger', Copy) {
+
+    delete 'src/main/resources/static/swagger-ui/openapi3.yaml'
+    from layout.buildDirectory.file("api-spec/openapi3.yaml")
+    into 'src/main/resources/static/swagger-ui'
+
+    dependsOn tasks.named('openapi3')
+
+    doFirst {
+        def openapi3File = layout.buildDirectory.file("api-spec/openapi3.yaml").get().asFile
+
+        def securitySchemesContent = "  securitySchemes:\n" +       \
+                                           "    JWT:\n" +       \
+                                           "      type: apiKey\n" +       \
+                                           "      name: Authorization\n" +       \
+                                           "      in: header\n" +      \
+                                           "security:\n" +
+                "  - JWT: []  "
+
+        if (openapi3File.exists()) {
+            openapi3File.append(securitySchemesContent)
+        } else {
+            println "Warning: openapi3.yaml not found at ${openapi3File.path}"
+        }
+    }
+
+    bootRun {
+        dependsOn 'openapi3'
+    }
+}
+
+ext.jacocoExcludes = [
+        // main
+        "**/AcademyApplication.class",
+        // dto
+        "**/dto/**",
+        // exception
+        "**/exception/**",
+        // config
+        "**/config/**",
+]
+
+tasks.named('jacocoTestReport') {
+    dependsOn(tasks.named('test'))
+    reports {
+        xml.required = true
+        html.required = true
+        csv.required = false
+    }
+    classDirectories.setFrom(
+            files(classDirectories.files.collect { dir ->
+                fileTree(dir) {
+                    exclude jacocoExcludes
+                }
+            })
+    )
+
+    finalizedBy tasks.named('jacocoTestCoverageVerification')
+}
+
+tasks.jacocoTestCoverageVerification {
+    violationRules {
+        rule {
+            enabled = true
+            element = "BUNDLE"
+
+            limit {
+                counter = "INSTRUCTION"
+                value = "COVEREDRATIO"
+                minimum = 0.10
+            }
+            excludes = jacocoExcludes
+        }
+    }
 }
 
 tasks.named('test') {
-    outputs.dir snippetsDir
     useJUnitPlatform()
-}
 
-tasks.named('asciidoctor') {
-    inputs.dir snippetsDir
-    dependsOn test
+    finalizedBy('copyOasToSwagger')
+    finalizedBy("jacocoTestReport")
 }
