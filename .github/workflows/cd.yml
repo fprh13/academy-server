@@ -31,11 +31,11 @@ jobs:
       - name: Gradle 명령어 권한 부여
         run: chmod +x gradlew
 
-      - name: 애플리케이션 JAR 빌드
-        run: ./gradlew clean bootJar
-
       - name: OpenAPI 스펙 생성
-        run: ./gradlew test --tests "*ControllerTest" -Dspring.profiles.active=dev
+        run: ./gradlew clean test --tests "*ControllerTest" -Dspring.profiles.active=dev
+
+      - name: 애플리케이션 JAR 빌드
+        run: ./gradlew bootJar
 
       - name: JAR 결과물 업로드
         uses: actions/upload-artifact@v4
