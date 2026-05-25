@@ -4,6 +4,8 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import com.example.academy.common.exception.NotFoundException;
+import com.example.academy.common.presentation.dto.PagingRequest;
+import com.example.academy.common.presentation.dto.PagingResponse;
 import com.example.academy.course.domain.Course;
 import com.example.academy.course.domain.CourseRepository;
 import com.example.academy.course.presentation.dto.request.RegisterCourseRequest;
@@ -35,5 +37,12 @@ public class CourseService {
 			.orElseThrow(() -> new NotFoundException(Course.class));
 
 		return CourseDetailResponse.from(course);
+	}
+
+	public PagingResponse<CourseDetailResponse> getCourses(String state, PagingRequest request) {
+		return PagingResponse.from(
+			courseRepository.findPageByCourseStateIn(state, request.page(), request.size(), request.sort())
+				.map(CourseDetailResponse::from)
+		);
 	}
 }
