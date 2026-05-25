@@ -29,4 +29,9 @@ public class CourseRepositoryImpl implements CourseRepository {
 	public void deleteById(Long courseId) {
 		jpaCourseRepository.deleteById(courseId);
 	}
+
+	@Override
+	public Optional<Course> findByIdWithCreator(Long id) {
+		return jpaCourseRepository.findByIdWithCreator(id);
+	}
 }
