@@ -7,8 +7,9 @@ import java.time.LocalDate;
 
 import com.example.academy.common.domain.AccessPolicy;
 import com.example.academy.common.domain.AggregateRoot;
+import com.example.academy.common.exception.BadRequestException;
+import com.example.academy.common.exception.ConflictException;
 import com.example.academy.common.exception.ForbiddenException;
-import com.example.academy.identity.domain.user.Role;
 import com.example.academy.identity.domain.user.User;
 
 import jakarta.persistence.Column;
@@ -56,6 +57,9 @@ public class Course extends AggregateRoot<Course> implements AccessPolicy {
 	private User creator;
 
 	private Course(String title, String description, int price, Capacity capacity, LocalDate startDate, LocalDate endDate, User creator) {
+		validateCreatorRole(creator);
+		validatePrice(price);
+		validatePeriod(startDate, endDate);
 		this.title = title;
 		this.description = description;
 		this.price = price;
@@ -67,11 +71,70 @@ public class Course extends AggregateRoot<Course> implements AccessPolicy {
 	}
 
 	public static Course of(String title, String description, int price, Capacity capacity, LocalDate startDate, LocalDate endDate, User creator) {
+		return new Course(title, description, price, capacity, startDate, endDate, creator);
+	}
+
+	public void open() {
+		if (state != CourseState.DRAFT) {
+			throw new ConflictException("초안 상태의 강의만 모집을 시작할 수 있습니다.");
+		}
+		this.state = CourseState.OPEN;
+	}
+
+	public void close() {
+		if (state != CourseState.OPEN) {
+			throw new ConflictException("모집 중인 강의만 마감할 수 있습니다.");
+		}
+		this.state = CourseState.CLOSED;
+	}
+
+	public void increaseEnrollmentCount() {
+		validateCanEnroll();
+		capacity.increase();
+	}
+
+	public void decreaseEnrollmentCount() {
+		capacity.decrease();
+	}
+
+	private static void validateCreatorRole(User creator) {
 		if (creator.getRole() != CREATOR) {
 			throw new ForbiddenException();
 		}
+	}
 
-		return new Course(title, description, price, capacity, startDate, endDate, creator);
+	private void validatePrice(int price) {
+		if (price < 0) {
+			throw new BadRequestException("강의 가격은 0원 이상이어야 합니다.");
+		}
+	}
+
+	private void validatePeriod(LocalDate startDate, LocalDate endDate) {
+		if (startDate == null || endDate == null) {
+			throw new BadRequestException("수강 기간은 필수입니다.");
+		}
+
+		if (startDate.isAfter(endDate)) {
+			throw new BadRequestException("수강 시작일은 종료일보다 늦을 수 없습니다.");
+		}
+	}
+
+	public void validateCanEnroll() {
+		if (state != CourseState.OPEN) {
+			throw new ConflictException("모집 중인 강의만 신청할 수 있습니다.");
+		}
+
+		if (capacity.isFull()) {
+			throw new ConflictException("정원이 가득 찼습니다.");
+		}
+	}
+
+	public boolean isOpen() {
+		return state == CourseState.OPEN;
+	}
+
+	public boolean isClosed() {
+		return state == CourseState.CLOSED;
 	}
 
 	@Override
