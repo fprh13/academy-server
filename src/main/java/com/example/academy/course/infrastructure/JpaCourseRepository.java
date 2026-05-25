@@ -10,6 +10,6 @@ import com.example.academy.course.domain.Course;
 
 public interface JpaCourseRepository extends JpaRepository<Course, Long> {
 
-	@Query("SELECT c FROM Course c LEFT JOIN FETCH c.user u WHERE c.id = :id")
+	@Query("SELECT c FROM Course c LEFT JOIN FETCH c.creator cr WHERE c.id = :id")
 	Optional<Course> findByIdWithCreator(@Param("id") Long id);
 }
