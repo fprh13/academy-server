@@ -1,5 +1,6 @@
 package com.example.academy.common.domain;
 
 public interface AccessPolicy {
-	boolean canAccess(Long userId);
+	boolean canRead(Long userId);
+	boolean canWrite(Long userId);
 }
