@@ -6,6 +6,7 @@ import static org.mockito.ArgumentMatchers.*;
 import java.time.LocalDate;
 import java.util.Optional;
 
+import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
@@ -21,6 +22,7 @@ import com.example.academy.common.exception.NotFoundException;
 import com.example.academy.course.domain.Course;
 import com.example.academy.course.domain.CourseRepository;
 import com.example.academy.course.presentation.dto.request.RegisterCourseRequest;
+import com.example.academy.course.presentation.dto.response.CourseDetailResponse;
 import com.example.academy.identity.domain.user.User;
 import com.example.academy.identity.domain.user.UserRepository;
 import com.example.academy.support.fixture.UserFixture;
@@ -132,10 +134,83 @@ class CourseServiceTest {
 		}
 	}
 
+	@Nested
+	@DisplayName("강의 상세 조회 기능")
+	class GetCourseDetailTest {
+		@Test
+		void 강의와_강사정보를_함께_조회한다() {
+			//given
+			User creator = createCreator();
+			Course course = createCourse(creator);
+			Long courseId = course.getId();
+
+			Mockito.when(courseRepository.findByIdWithCreator(courseId))
+				.thenReturn(Optional.of(course));
+
+			//when
+			courseService.getCourseDetail(courseId);
+
+			//then
+			Mockito.verify(courseRepository, Mockito.times(1))
+				.findByIdWithCreator(courseId);
+		}
+
+		@Test
+		void 강의_상세응답을_반환한다() {
+			//given
+			User creator = createCreator();
+			Course course = createCourse(creator);
+			Long courseId = course.getId();
+
+			Mockito.when(courseRepository.findByIdWithCreator(courseId))
+				.thenReturn(Optional.of(course));
+
+			//when
+			CourseDetailResponse response = courseService.getCourseDetail(courseId);
+
+			//then
+			Assertions.assertAll(
+				() -> assertThat(response.courseId()).isEqualTo(course.getId()),
+				() -> assertThat(response.title()).isEqualTo(course.getTitle()),
+				() -> assertThat(response.description()).isEqualTo(course.getDescription()),
+				() -> assertThat(response.price()).isEqualTo(course.getPrice()),
+				() -> assertThat(response.maxCapacity()).isEqualTo(course.getCapacity().getMax()),
+				() -> assertThat(response.enrollmentCount()).isEqualTo(course.getCapacity().getCurrent()),
+				() -> assertThat(response.startDate()).isEqualTo(course.getStartDate()),
+				() -> assertThat(response.endDate()).isEqualTo(course.getEndDate()),
+				() -> assertThat(response.creatorInfo().creatorId()).isEqualTo(creator.getId()),
+				() -> assertThat(response.creatorInfo().creatorName()).isEqualTo(creator.getName()),
+				() -> assertThat(response.creatorInfo().creatorEmail()).isEqualTo(creator.getEmail())
+			);
+		}
+
+		@Test
+		void 강의가_없다면_예외를_반환한다() {
+			//given
+			Long courseId = 999L;
+
+			Mockito.when(courseRepository.findByIdWithCreator(courseId))
+				.thenReturn(Optional.empty());
+
+			//when & then
+			assertThatThrownBy(() -> courseService.getCourseDetail(courseId))
+				.isInstanceOf(NotFoundException.class);
+		}
+	}
+
 	private User createCreator() {
 		User creator = UserFixture.USER_FIXTURE_1.createCreator();
 		ReflectionTestUtils.setField(creator, "id", 1L);
 		return creator;
+	}
+
+	private Course createCourse(User creator) {
+		RegisterCourseRequest request = createRequest();
+		Course course = request.toEntity(creator);
+		ReflectionTestUtils.setField(course, "id", 10L);
+		course.open();
+		course.increaseEnrollmentCount();
+		return course;
 	}
 
 	private RegisterCourseRequest createRequest() {

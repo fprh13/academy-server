@@ -17,6 +17,7 @@ import com.example.academy.course.domain.Course;
 import com.example.academy.course.domain.CourseRepository;
 import com.example.academy.course.domain.CourseState;
 import com.example.academy.course.presentation.dto.request.RegisterCourseRequest;
+import com.example.academy.course.presentation.dto.response.CourseDetailResponse;
 import com.example.academy.identity.domain.user.User;
 import com.example.academy.identity.domain.user.UserRepository;
 import com.example.academy.support.IntegrationSupportTest;
@@ -85,6 +86,52 @@ class CourseIntegrationTest extends IntegrationSupportTest {
 			assertThatThrownBy(() -> courseService.registerCourse(request, user.getId()))
 				.isInstanceOf(ForbiddenException.class);
 		}
+	}
+
+	@Nested
+	@DisplayName("강의 상세 조회 기능")
+	class GetCourseDetailTest {
+		@Test
+		void 강의_상세정보를_조회한다() {
+			//given
+			User creator = userRepository.save(UserFixture.USER_FIXTURE_1.createCreator());
+			Course savedCourse = createSavedCourse(creator);
+
+			//when
+			CourseDetailResponse response = courseService.getCourseDetail(savedCourse.getId());
+
+			//then
+			assertAll(
+				() -> assertThat(response.courseId()).isEqualTo(savedCourse.getId()),
+				() -> assertThat(response.title()).isEqualTo(savedCourse.getTitle()),
+				() -> assertThat(response.description()).isEqualTo(savedCourse.getDescription()),
+				() -> assertThat(response.price()).isEqualTo(savedCourse.getPrice()),
+				() -> assertThat(response.maxCapacity()).isEqualTo(savedCourse.getCapacity().getMax()),
+				() -> assertThat(response.enrollmentCount()).isEqualTo(savedCourse.getCapacity().getCurrent()),
+				() -> assertThat(response.startDate()).isEqualTo(savedCourse.getStartDate()),
+				() -> assertThat(response.endDate()).isEqualTo(savedCourse.getEndDate()),
+				() -> assertThat(response.creatorInfo().creatorId()).isEqualTo(creator.getId()),
+				() -> assertThat(response.creatorInfo().creatorName()).isEqualTo(creator.getName()),
+				() -> assertThat(response.creatorInfo().creatorEmail()).isEqualTo(creator.getEmail())
+			);
+		}
+
+		@Test
+		void 강의가_없다면_예외를_반환한다() {
+			//given
+			Long courseId = 999L;
+
+			//when & then
+			assertThatThrownBy(() -> courseService.getCourseDetail(courseId))
+				.isInstanceOf(NotFoundException.class);
+		}
+	}
+
+	private Course createSavedCourse(User creator) {
+		Course course = courseRepository.save(createRequest().toEntity(creator));
+		course.open();
+		course.increaseEnrollmentCount();
+		return course;
 	}
 
 	private RegisterCourseRequest createRequest() {
