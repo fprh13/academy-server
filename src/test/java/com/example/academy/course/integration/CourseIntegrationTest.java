@@ -1,0 +1,100 @@
+package com.example.academy.course.integration;
+
+import static org.assertj.core.api.Assertions.*;
+import static org.junit.jupiter.api.Assertions.*;
+
+import java.time.LocalDate;
+
+import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Nested;
+import org.junit.jupiter.api.Test;
+import org.springframework.beans.factory.annotation.Autowired;
+
+import com.example.academy.common.exception.ForbiddenException;
+import com.example.academy.common.exception.NotFoundException;
+import com.example.academy.course.application.CourseService;
+import com.example.academy.course.domain.Course;
+import com.example.academy.course.domain.CourseRepository;
+import com.example.academy.course.domain.CourseState;
+import com.example.academy.course.presentation.dto.request.RegisterCourseRequest;
+import com.example.academy.identity.domain.user.User;
+import com.example.academy.identity.domain.user.UserRepository;
+import com.example.academy.support.IntegrationSupportTest;
+import com.example.academy.support.fixture.UserFixture;
+
+class CourseIntegrationTest extends IntegrationSupportTest {
+
+	private static final String COURSE_NOT_SAVED_MESSAGE = "강의가 저장되지 않았습니다.";
+
+	@Autowired
+	private CourseService courseService;
+
+	@Autowired
+	private CourseRepository courseRepository;
+
+	@Autowired
+	private UserRepository userRepository;
+
+	@Nested
+	@DisplayName("강의 생성 기능")
+	class RegisterCourseTest {
+		@Test
+		void 강의를_생성한다() {
+			//given
+			User creator = userRepository.save(UserFixture.USER_FIXTURE_1.createCreator());
+			RegisterCourseRequest request = createRequest();
+
+			//when
+			Long courseId = courseService.registerCourse(request, creator.getId());
+
+			//then
+			Course course = courseRepository.findById(courseId)
+				.orElseThrow(() -> new AssertionError(COURSE_NOT_SAVED_MESSAGE));
+
+			assertAll(
+				() -> assertThat(course.getTitle()).isEqualTo(request.title()),
+				() -> assertThat(course.getDescription()).isEqualTo(request.description()),
+				() -> assertThat(course.getPrice()).isEqualTo(request.price()),
+				() -> assertThat(course.getCapacity().getMax()).isEqualTo(request.maxCapacity()),
+				() -> assertThat(course.getCapacity().getCurrent()).isZero(),
+				() -> assertThat(course.getStartDate()).isEqualTo(request.startDate()),
+				() -> assertThat(course.getEndDate()).isEqualTo(request.endDate()),
+				() -> assertThat(course.getState()).isEqualTo(CourseState.DRAFT),
+				() -> assertThat(course.getCreator().getId()).isEqualTo(creator.getId())
+			);
+		}
+
+		@Test
+		void 사용자가_없다면_예외를_반환한다() {
+			//given
+			RegisterCourseRequest request = createRequest();
+			Long creatorId = 999L;
+
+			//when & then
+			assertThatThrownBy(() -> courseService.registerCourse(request, creatorId))
+				.isInstanceOf(NotFoundException.class);
+		}
+
+		@Test
+		void 강사가_아니라면_예외를_반환한다() {
+			//given
+			User user = userRepository.save(UserFixture.USER_FIXTURE_2.create());
+			RegisterCourseRequest request = createRequest();
+
+			//when & then
+			assertThatThrownBy(() -> courseService.registerCourse(request, user.getId()))
+				.isInstanceOf(ForbiddenException.class);
+		}
+	}
+
+	private RegisterCourseRequest createRequest() {
+		return new RegisterCourseRequest(
+			"자바 입문",
+			"자바 기초 문법을 학습하는 강의입니다.",
+			100000,
+			30,
+			LocalDate.of(2026, 6, 1),
+			LocalDate.of(2026, 6, 30)
+		);
+	}
+}
