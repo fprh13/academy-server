@@ -68,6 +68,10 @@ public class SecurityConfig {
 						mvc.matcher(POST, AUTH_URI + "/login")
 					).permitAll()
 
+					.requestMatchers(
+						mvc.matcher(GET, COURSE_URI + "{courseId}")
+					).permitAll()
+
 					//== 인증 필요 ==//
 					.requestMatchers(
 						mvc.matcher(GET, USER_URI + "/profile"),

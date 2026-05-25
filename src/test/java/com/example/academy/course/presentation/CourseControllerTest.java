@@ -1,6 +1,7 @@
 package com.example.academy.course.presentation;
 
 import static org.mockito.ArgumentMatchers.*;
+import static org.springframework.restdocs.request.RequestDocumentation.*;
 import static org.springframework.restdocs.payload.PayloadDocumentation.*;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
@@ -21,9 +22,12 @@ import com.epages.restdocs.apispec.ResourceDocumentation;
 import com.epages.restdocs.apispec.ResourceSnippetParameters;
 import com.epages.restdocs.apispec.Schema;
 import com.example.academy.common.exception.ForbiddenException;
+import com.example.academy.common.exception.NotFoundException;
 import com.example.academy.common.presentation.dto.ApiErrorResponse;
 import com.example.academy.common.presentation.dto.ApiResponse;
+import com.example.academy.course.domain.Course;
 import com.example.academy.course.presentation.dto.request.RegisterCourseRequest;
+import com.example.academy.course.presentation.dto.response.CourseDetailResponse;
 import com.example.academy.support.RestDocsSupport;
 
 class CourseControllerTest extends RestDocsSupport {
@@ -155,5 +159,104 @@ class CourseControllerTest extends RestDocsSupport {
 						.build())
 				));
 		}
+	}
+
+	@Nested
+	@DisplayName("강의 상세조회 API 테스트")
+	class GetCourseDetailTest {
+		@Test
+		void 강의_상세_조회_2XX() throws Exception {
+			//given
+			Long courseId = 1L;
+			CourseDetailResponse responseDto = createCourseDetailResponse(courseId);
+
+			Mockito.when(courseService.getCourseDetail(courseId))
+				.thenReturn(responseDto);
+
+			//when
+			ResultActions actions = mockMvc.perform(
+				get(BASE_URI + "/{courseId}", courseId)
+					.contentType(MediaType.APPLICATION_JSON));
+
+			//then
+			actions
+				.andExpect(status().isOk())
+				.andExpect(jsonPath("$.message").value(BASE_SUCCESS_MESSAGE))
+				.andExpect(jsonPath("$.data.courseId").value(responseDto.courseId()))
+				.andExpect(jsonPath("$.data.title").value(responseDto.title()))
+				.andExpect(jsonPath("$.data.enrollmentCount").value(responseDto.enrollmentCount()))
+				.andExpect(jsonPath("$.data.creatorInfo.creatorId").value(responseDto.creatorInfo().creatorId()))
+				.andDo(restDocsHandler.document(
+					ResourceDocumentation.resource(ResourceSnippetParameters.builder()
+						.tag(BASE_TAG)
+						.summary("강의 상세 조회")
+						.description("## 강의 상세 기능")
+						.pathParameters(
+							parameterWithName("courseId").description("조회할 강의의 PK입니다.")
+						)
+						.responseSchema(Schema.schema(CourseDetailResponse.class.getSimpleName()))
+						.responseFields(
+							fieldWithPath("message").description("성공 응답 메세지입니다.").type(JsonFieldType.STRING),
+							fieldWithPath("data.courseId").description("강의 식별자입니다.").type(JsonFieldType.NUMBER),
+							fieldWithPath("data.title").description("강의 제목입니다.").type(JsonFieldType.STRING),
+							fieldWithPath("data.description").description("강의 설명입니다.").type(JsonFieldType.STRING),
+							fieldWithPath("data.price").description("강의 가격입니다.").type(JsonFieldType.NUMBER),
+							fieldWithPath("data.maxCapacity").description("최대 수강 정원입니다.").type(JsonFieldType.NUMBER),
+							fieldWithPath("data.enrollmentCount").description("현재 신청 인원입니다.").type(JsonFieldType.NUMBER),
+							fieldWithPath("data.startDate").description("수강 시작일입니다.").type(JsonFieldType.STRING),
+							fieldWithPath("data.endDate").description("수강 종료일입니다.").type(JsonFieldType.STRING),
+							fieldWithPath("data.creatorInfo.creatorId").description("강사 식별자입니다.").type(JsonFieldType.NUMBER),
+							fieldWithPath("data.creatorInfo.creatorName").description("강사 이름입니다.").type(JsonFieldType.STRING),
+							fieldWithPath("data.creatorInfo.creatorEmail").description("강사 이메일입니다.").type(JsonFieldType.STRING)
+						)
+						.build())
+				));
+		}
+
+		@Test
+		void 강의_상세조회_4XX_NOTFOUND() throws Exception {
+			//given
+			String errorMessage = Course.class.getSimpleName() + "을(를) 찾을 수 없습니다.";
+			Long courseId = 999L;
+
+			Mockito.doThrow(new NotFoundException(Course.class))
+				.when(courseService)
+				.getCourseDetail(courseId);
+
+			//when
+			ResultActions actions = mockMvc.perform(
+				get(BASE_URI + "/{courseId}", courseId)
+					.contentType(MediaType.APPLICATION_JSON));
+
+			//then
+			actions
+				.andExpect(status().isNotFound())
+				.andExpect(result -> Assertions.assertInstanceOf(NotFoundException.class, result.getResolvedException()))
+				.andExpect(jsonPath("$.message").value(errorMessage))
+				.andDo(restDocsHandler.document(
+					ResourceDocumentation.resource(ResourceSnippetParameters.builder()
+						.tag(BASE_TAG)
+						.responseSchema(Schema.schema(ApiErrorResponse.class.getSimpleName()))
+						.build())
+				));
+		}
+	}
+
+	private CourseDetailResponse createCourseDetailResponse(Long courseId) {
+		return new CourseDetailResponse(
+			courseId,
+			"자바 입문",
+			"자바 기초 문법을 학습하는 강의입니다.",
+			100000,
+			30,
+			7,
+			LocalDate.of(2026, 6, 1),
+			LocalDate.of(2026, 6, 30),
+			new CourseDetailResponse.CreatorInfo(
+				1L,
+				"홍길동",
+				"creator@test.com"
+			)
+		);
 	}
 }
