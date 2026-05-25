@@ -16,6 +16,7 @@ import com.example.academy.common.presentation.dto.PagingResponse;
 import com.example.academy.course.application.CourseService;
 import com.example.academy.course.presentation.dto.request.RegisterCourseRequest;
 import com.example.academy.course.presentation.dto.response.CourseDetailResponse;
+import com.example.academy.course.presentation.dto.response.CourseSummaryResponse;
 import com.example.academy.identity.domain.user.User;
 
 import jakarta.validation.Valid;
@@ -39,7 +40,7 @@ public class CourseController {
 	}
 
 	@GetMapping
-	public ResponseEntity<ApiResponse<PagingResponse<CourseDetailResponse>>> getCourses(
+	public ResponseEntity<ApiResponse<PagingResponse<CourseSummaryResponse>>> getCourses(
 		@ModelAttribute PagingRequest pagingRequest,
 		@RequestParam(required = false) String state
 	) {

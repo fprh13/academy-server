@@ -7,6 +7,7 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
 import java.time.LocalDate;
+import java.util.List;
 
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.DisplayName;
@@ -29,6 +30,7 @@ import com.example.academy.common.presentation.dto.PagingResponse;
 import com.example.academy.course.domain.Course;
 import com.example.academy.course.presentation.dto.request.RegisterCourseRequest;
 import com.example.academy.course.presentation.dto.response.CourseDetailResponse;
+import com.example.academy.course.presentation.dto.response.CourseSummaryResponse;
 import com.example.academy.support.RestDocsSupport;
 
 class CourseControllerTest extends RestDocsSupport {
@@ -250,7 +252,7 @@ class CourseControllerTest extends RestDocsSupport {
 		void 강의_목록_조회_2XX() throws Exception {
 			//given
 			String state = "open";
-			PagingResponse<CourseDetailResponse> responseDto = createCoursePagingResponse();
+			PagingResponse<CourseSummaryResponse> responseDto = createCoursePagingResponse();
 
 			Mockito.when(courseService.getCourses(eq(state), any()))
 				.thenReturn(responseDto);
@@ -260,7 +262,7 @@ class CourseControllerTest extends RestDocsSupport {
 				get(BASE_URI)
 					.queryParam("state", state)
 					.queryParam("page", "1")
-					.queryParam("size", "2")
+					.queryParam("size", "10")
 					.queryParam("sort", "deadline")
 					.contentType(MediaType.APPLICATION_JSON));
 
@@ -270,8 +272,16 @@ class CourseControllerTest extends RestDocsSupport {
 				.andExpect(jsonPath("$.message").value(BASE_SUCCESS_MESSAGE))
 				.andExpect(jsonPath("$.data.content[0].courseId").value(1L))
 				.andExpect(jsonPath("$.data.content[1].courseId").value(2L))
+				.andExpect(jsonPath("$.data.content[2].courseId").value(3L))
+				.andExpect(jsonPath("$.data.content[3].courseId").value(4L))
+				.andExpect(jsonPath("$.data.content[4].courseId").value(5L))
+				.andExpect(jsonPath("$.data.content[5].courseId").value(6L))
+				.andExpect(jsonPath("$.data.content[6].courseId").value(7L))
+				.andExpect(jsonPath("$.data.content[7].courseId").value(8L))
+				.andExpect(jsonPath("$.data.content[8].courseId").value(9L))
+				.andExpect(jsonPath("$.data.content[9].courseId").value(10L))
 				.andExpect(jsonPath("$.data.page.number").value(1))
-				.andExpect(jsonPath("$.data.page.totalElements").value(3))
+				.andExpect(jsonPath("$.data.page.totalElements").value(15))
 				.andDo(restDocsHandler.document(
 					ResourceDocumentation.resource(ResourceSnippetParameters.builder()
 						.tag(BASE_TAG)
@@ -291,16 +301,13 @@ class CourseControllerTest extends RestDocsSupport {
 						.responseFields(
 							fieldWithPath("message").description("성공 응답 메세지입니다.").type(JsonFieldType.STRING),
 							fieldWithPath("data.content[].courseId").description("강의 식별자입니다.").type(JsonFieldType.NUMBER),
+							fieldWithPath("data.content[].creatorName").description("강사 이름입니다.").type(JsonFieldType.STRING),
 							fieldWithPath("data.content[].title").description("강의 제목입니다.").type(JsonFieldType.STRING),
-							fieldWithPath("data.content[].description").description("강의 설명입니다.").type(JsonFieldType.STRING),
 							fieldWithPath("data.content[].price").description("강의 가격입니다.").type(JsonFieldType.NUMBER),
 							fieldWithPath("data.content[].maxCapacity").description("최대 수강 정원입니다.").type(JsonFieldType.NUMBER),
 							fieldWithPath("data.content[].enrollmentCount").description("현재 신청 인원입니다.").type(JsonFieldType.NUMBER),
 							fieldWithPath("data.content[].startDate").description("수강 시작일입니다.").type(JsonFieldType.STRING),
 							fieldWithPath("data.content[].endDate").description("수강 종료일입니다.").type(JsonFieldType.STRING),
-							fieldWithPath("data.content[].creatorInfo.creatorId").description("강사 식별자입니다.").type(JsonFieldType.NUMBER),
-							fieldWithPath("data.content[].creatorInfo.creatorName").description("강사 이름입니다.").type(JsonFieldType.STRING),
-							fieldWithPath("data.content[].creatorInfo.creatorEmail").description("강사 이메일입니다.").type(JsonFieldType.STRING),
 							fieldWithPath("data.page.number").description("현재 페이지 번호입니다.").type(JsonFieldType.NUMBER),
 							fieldWithPath("data.page.size").description("페이지 크기입니다.").type(JsonFieldType.NUMBER),
 							fieldWithPath("data.page.totalElements").description("전체 강의 수입니다.").type(JsonFieldType.NUMBER),
@@ -331,20 +338,41 @@ class CourseControllerTest extends RestDocsSupport {
 		);
 	}
 
-	private PagingResponse<CourseDetailResponse> createCoursePagingResponse() {
+	private PagingResponse<CourseSummaryResponse> createCoursePagingResponse() {
 		return new PagingResponse<>(
-			java.util.List.of(
-				createCourseDetailResponse(1L),
-				createCourseDetailResponse(2L)
+			List.of(
+				createCourseSummaryResponse(1L),
+				createCourseSummaryResponse(2L),
+				createCourseSummaryResponse(3L),
+				createCourseSummaryResponse(4L),
+				createCourseSummaryResponse(5L),
+				createCourseSummaryResponse(6L),
+				createCourseSummaryResponse(7L),
+				createCourseSummaryResponse(8L),
+				createCourseSummaryResponse(9L),
+				createCourseSummaryResponse(10L)
 			),
 			new PagingResponse.PageMetaData(
 				1,
-				2,
-				3L,
+				10,
+				15L,
 				2,
 				true,
 				false
 			)
+		);
+	}
+
+	private CourseSummaryResponse createCourseSummaryResponse(Long courseId) {
+		return new CourseSummaryResponse(
+			courseId,
+			"홍길동",
+			"자바 입문",
+			100000,
+			30,
+			7,
+			LocalDate.of(2026, 5, 1),
+			LocalDate.of(2026, 6, 30)
 		);
 	}
 }

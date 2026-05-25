@@ -25,11 +25,11 @@ import com.example.academy.common.exception.ForbiddenException;
 import com.example.academy.common.exception.NotFoundException;
 import com.example.academy.common.presentation.dto.PagingRequest;
 import com.example.academy.common.presentation.dto.PagingResponse;
-import com.example.academy.course.domain.Capacity;
 import com.example.academy.course.domain.Course;
 import com.example.academy.course.domain.CourseRepository;
 import com.example.academy.course.presentation.dto.request.RegisterCourseRequest;
 import com.example.academy.course.presentation.dto.response.CourseDetailResponse;
+import com.example.academy.course.presentation.dto.response.CourseSummaryResponse;
 import com.example.academy.identity.domain.user.User;
 import com.example.academy.identity.domain.user.UserRepository;
 import com.example.academy.support.fixture.CourseFixture;
@@ -251,13 +251,13 @@ class CourseServiceTest {
 				.thenReturn(coursePage);
 
 			//when
-			PagingResponse<CourseDetailResponse> response = courseService.getCourses(state, request);
+			PagingResponse<CourseSummaryResponse> response = courseService.getCourses(state, request);
 
 			//then
 			Assertions.assertAll(
 				() -> assertThat(response.content()).hasSize(2),
 				() -> assertThat(response.content().get(0).courseId()).isEqualTo(firstCourse.getId()),
-				() -> assertThat(response.content().get(0).creatorInfo().creatorId()).isEqualTo(creator.getId()),
+				() -> assertThat(response.content().get(0).creatorName()).isEqualTo(creator.getName()),
 				() -> assertThat(response.content().get(1).courseId()).isEqualTo(secondCourse.getId()),
 				() -> assertThat(response.page().number()).isEqualTo(1),
 				() -> assertThat(response.page().size()).isEqualTo(2),

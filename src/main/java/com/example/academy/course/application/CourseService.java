@@ -10,6 +10,7 @@ import com.example.academy.course.domain.Course;
 import com.example.academy.course.domain.CourseRepository;
 import com.example.academy.course.presentation.dto.request.RegisterCourseRequest;
 import com.example.academy.course.presentation.dto.response.CourseDetailResponse;
+import com.example.academy.course.presentation.dto.response.CourseSummaryResponse;
 import com.example.academy.identity.domain.user.User;
 import com.example.academy.identity.domain.user.UserRepository;
 
@@ -39,10 +40,10 @@ public class CourseService {
 		return CourseDetailResponse.from(course);
 	}
 
-	public PagingResponse<CourseDetailResponse> getCourses(String state, PagingRequest request) {
+	public PagingResponse<CourseSummaryResponse> getCourses(String state, PagingRequest request) {
 		return PagingResponse.from(
 			courseRepository.findPageByCourseStateIn(state, request.page(), request.size(), request.sort())
-				.map(CourseDetailResponse::from)
+				.map(CourseSummaryResponse::of)
 		);
 	}
 }

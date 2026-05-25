@@ -20,6 +20,7 @@ import com.example.academy.course.domain.CourseRepository;
 import com.example.academy.course.domain.CourseState;
 import com.example.academy.course.presentation.dto.request.RegisterCourseRequest;
 import com.example.academy.course.presentation.dto.response.CourseDetailResponse;
+import com.example.academy.course.presentation.dto.response.CourseSummaryResponse;
 import com.example.academy.identity.domain.user.User;
 import com.example.academy.identity.domain.user.UserRepository;
 import com.example.academy.support.IntegrationSupportTest;
@@ -144,13 +145,13 @@ class CourseIntegrationTest extends IntegrationSupportTest {
 			PagingRequest request = new PagingRequest(1, 10, "deadline");
 
 			//when
-			PagingResponse<CourseDetailResponse> response = courseService.getCourses("open", request);
+			PagingResponse<CourseSummaryResponse> response = courseService.getCourses("open", request);
 
 			//then
 			assertAll(
 				() -> assertThat(response.content()).hasSize(1),
 				() -> assertThat(response.content().get(0).courseId()).isEqualTo(openCourse.getId()),
-				() -> assertThat(response.content().get(0).creatorInfo().creatorId()).isEqualTo(creator.getId()),
+				() -> assertThat(response.content().get(0).creatorName()).isEqualTo(creator.getName()),
 				() -> assertThat(response.page().number()).isEqualTo(1),
 				() -> assertThat(response.page().size()).isEqualTo(10),
 				() -> assertThat(response.page().totalElements()).isEqualTo(1),
@@ -172,7 +173,7 @@ class CourseIntegrationTest extends IntegrationSupportTest {
 			PagingRequest request = new PagingRequest(2, 2, "deadline");
 
 			//when
-			PagingResponse<CourseDetailResponse> response = courseService.getCourses(null, request);
+			PagingResponse<CourseSummaryResponse> response = courseService.getCourses(null, request);
 
 			//then
 			assertAll(
