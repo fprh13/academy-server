@@ -34,6 +34,7 @@ public class SecurityConfig {
 
 	private static final String USER_URI = "/users";
 	private static final String AUTH_URI = "/auth";
+	private static final String COURSE_URI = "/courses";
 	private static final String[] SWAGGER_PATTERNS = {"/swagger-ui/**", "/v3/api-docs/**", "/static/swagger-ui/**"};
 
     private final JwtAuthorizationFilter jwtAuthorizationFilter;
@@ -71,6 +72,10 @@ public class SecurityConfig {
 					.requestMatchers(
 						mvc.matcher(GET, USER_URI + "/profile"),
 						mvc.matcher(PUT, USER_URI)
+					).authenticated()
+
+					.requestMatchers(
+						mvc.matcher(POST, COURSE_URI)
 					).authenticated()
 
 					.anyRequest().permitAll()

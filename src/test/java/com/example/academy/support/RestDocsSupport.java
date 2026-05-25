@@ -26,6 +26,8 @@ import org.springframework.test.web.servlet.MockMvc;
 
 import com.example.academy.common.infrastructure.config.SecurityConfig;
 import com.example.academy.common.presentation.HealthCheckController;
+import com.example.academy.course.application.CourseService;
+import com.example.academy.course.presentation.CourseController;
 import com.example.academy.identity.application.AuthService;
 import com.example.academy.identity.application.UserService;
 import com.example.academy.identity.domain.user.User;
@@ -44,6 +46,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 	HealthCheckController.class,
 	UserController.class,
 	AuthController.class,
+	CourseController.class,
 })
 @Import({
 	SecurityConfig.class,
@@ -89,6 +92,9 @@ public abstract class RestDocsSupport {
 	@MockitoBean
 	protected AuthService authService;
 
+	@MockitoBean
+	protected CourseService courseService;
+
 	@BeforeEach
 	void setUp() {
 		User userFixture = UserFixture.USER_FIXTURE_1.create();
@@ -114,4 +120,3 @@ public abstract class RestDocsSupport {
 		}
 	}
 }
-
