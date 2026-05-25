@@ -69,6 +69,7 @@ public class SecurityConfig {
 					).permitAll()
 
 					.requestMatchers(
+						mvc.matcher(GET, COURSE_URI),
 						mvc.matcher(GET, COURSE_URI + "{courseId}")
 					).permitAll()
 
