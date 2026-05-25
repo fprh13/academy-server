@@ -1,10 +1,10 @@
 package com.example.academy.identity.presentation.dto.request.user;
 
-import com.example.academy.identity.domain.user.Role;
 import com.example.academy.identity.domain.user.User;
 
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Pattern;
 
 public record RegisterUserRequest(
@@ -17,9 +17,12 @@ public record RegisterUserRequest(
 	String password,
 
 	@Email String email,
-	@NotBlank String name
+	@NotBlank String name,
+	@NotNull Boolean creator
 ) {
 	public User toEntity(final String encodedPassword) {
-		return new User(loginId, encodedPassword, email, name, Role.USER);
+		return creator
+			? User.registerAsCreator(loginId, encodedPassword, email, name)
+			: User.register(loginId, encodedPassword, email, name);
 	}
 }

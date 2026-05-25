@@ -32,7 +32,7 @@ public class User extends AggregateRoot<User> {
 	@Column(name = "role", length = 20, nullable = false)
 	private Role role;
 
-    public User(String loginId, String password, String email, String name, Role role) {
+    private User(String loginId, String password, String email, String name, Role role) {
         this.loginId = loginId;
         this.password = password;
         this.email = email;
@@ -40,4 +40,12 @@ public class User extends AggregateRoot<User> {
         this.role = role;
 		registerEvent(new UserRegisteredEvent(this));
     }
+
+	public static User register(String loginId, String password, String email, String name) {
+		return new User(loginId, password, email, name, Role.USER);
+	}
+
+	public static User registerAsCreator(String loginId, String password, String email, String name) {
+		return new User(loginId, password, email, name, Role.CREATOR);
+	}
 }

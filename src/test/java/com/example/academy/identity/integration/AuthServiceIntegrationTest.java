@@ -31,9 +31,6 @@ class AuthServiceIntegrationTest extends IntegrationSupportTest {
 	@Autowired
 	BCryptPasswordEncoder bCryptPasswordEncoder;
 
-	@Autowired
-	JwtTokenProvider jwtTokenProvider;
-
     private User user;
 
     @BeforeEach
@@ -41,12 +38,11 @@ class AuthServiceIntegrationTest extends IntegrationSupportTest {
         User userFixture = UserFixture.USER_FIXTURE_1.create();
 
         user = userRepository.save(
-                new User(
+                User.register(
                         userFixture.getLoginId(),
                         bCryptPasswordEncoder.encode(userFixture.getPassword()),
                         userFixture.getEmail(),
-                        userFixture.getName(),
-                        userFixture.getRole()
+                        userFixture.getName()
                 )
         );
     }
