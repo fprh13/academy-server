@@ -1,11 +1,14 @@
 package com.example.academy.course.domain;
 
+import static com.example.academy.identity.domain.user.Role.*;
 import static jakarta.persistence.FetchType.*;
 
 import java.time.LocalDate;
 
 import com.example.academy.common.domain.AccessPolicy;
 import com.example.academy.common.domain.AggregateRoot;
+import com.example.academy.common.exception.ForbiddenException;
+import com.example.academy.identity.domain.user.Role;
 import com.example.academy.identity.domain.user.User;
 
 import jakarta.persistence.Column;
@@ -64,6 +67,10 @@ public class Course extends AggregateRoot<Course> implements AccessPolicy {
 	}
 
 	public static Course of(String title, String description, int price, Capacity capacity, LocalDate startDate, LocalDate endDate, User creator) {
+		if (creator.getRole() != CREATOR) {
+			throw new ForbiddenException();
+		}
+
 		return new Course(title, description, price, capacity, startDate, endDate, creator);
 	}
 
