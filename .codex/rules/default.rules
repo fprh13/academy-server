@@ -1,0 +1,106 @@
+# --------------------------------------------------
+#                       허용
+# --------------------------------------------------
+
+# Gradle 테스트 명령 허용
+prefix_rule(
+  pattern = ["./gradlew", "test"],
+  decision = "allow",
+  justification = "이 저장소의 표준 품질 검증 명령입니다.",
+  match = [
+    "./gradlew test",
+    "./gradlew test -DexcludeTags=integration",
+  ],
+  not_match = [
+    "./gradlew build",
+    "./gradlew clean test",
+  ],
+)
+
+# --------------------------------------------------
+#                       확인
+# --------------------------------------------------
+
+# 커밋 생성 전에는 사용자 확인 요청
+prefix_rule(
+  pattern = ["git", "commit"],
+  decision = "prompt",
+  justification = "커밋은 사용자 검토 후 수행되어야 합니다.",
+  match = [
+    "git commit -m chore",
+    "git commit --amend",
+  ],
+  not_match = [
+    "git status",
+    "git add .",
+  ],
+)
+
+# 푸시 전에는 사용자 확인 요청
+prefix_rule(
+  pattern = ["git", "push"],
+  decision = "prompt",
+  justification = "푸시는 항상 검토 후 수행되어야 합니다.",
+  match = [
+    "git push",
+    "git push origin main",
+    "git push origin feature/my-branch",
+  ],
+  not_match = [
+    "git pull",
+    "git status",
+  ],
+)
+
+# --------------------------------------------------
+#                       금지
+# --------------------------------------------------
+
+# 강제 푸시는 금지
+prefix_rule(
+  pattern = ["git", "push", ["-f", "--force", "--force-with-lease", "--force-if-includes"]],
+  decision = "forbidden",
+  justification = "Codex에서 원격 히스토리를 덮어쓰면 안 됩니다. 일반 push를 사용하거나 수동으로 처리해야 합니다.",
+  match = [
+      "git push -f",
+      "git push --force",
+      "git push --force origin feature-branch",
+      "git push --force-with-lease",
+      "git push --force-if-includes",
+    ],
+    not_match = [
+      "git push",
+      "git push --tags",
+      "git push origin main",
+    ],
+  )
+
+# hard reset 금지
+prefix_rule(
+  pattern = ["git", "reset", "--hard"],
+  decision = "forbidden",
+  justification = "hard reset은 위험합니다. 더 안전한 복구 절차를 수동으로 사용해야 합니다.",
+  match = [
+    "git reset --hard",
+    "git reset --hard HEAD~1",
+  ],
+  not_match = [
+    "git reset --soft HEAD~1",
+    "git restore .",
+  ],
+)
+
+# 재귀 삭제 금지
+prefix_rule(
+  pattern = ["rm", "-rf", ["/", "."]],
+  decision = "forbidden",
+  justification = "위험한 재귀 삭제는 항상 금지됩니다.",
+  match = [
+    "rm -rf /",
+    "rm -rf .",
+  ],
+  not_match = [
+    "rm -rf build",
+    "rm -rf .gradle",
+  ],
+)
