@@ -50,7 +50,8 @@ class UserServiceTest {
 				userFixture.getLoginId(),
 				userFixture.getPassword(),
 				userFixture.getEmail(),
-				userFixture.getName()
+				userFixture.getName(),
+				false
 			);
 			when(bCryptPasswordEncoder.encode(registerUserRequest.password())).thenReturn(registerUserRequest.password());
 
@@ -74,7 +75,8 @@ class UserServiceTest {
 				userFixture.getLoginId(),
 				userFixture.getPassword(),
 				userFixture.getEmail(),
-				userFixture.getName()
+				userFixture.getName(),
+				false
 			);
 			when(bCryptPasswordEncoder.encode(registerUserRequest.password())).thenReturn(registerUserRequest.password());
 			User newUser = registerUserRequest.toEntity(registerUserRequest.password());
@@ -96,7 +98,8 @@ class UserServiceTest {
 				userFixture.getLoginId(),
 				userFixture.getPassword(),
 				userFixture.getEmail(),
-				userFixture.getName()
+				userFixture.getName(),
+				false
 			);
 			String encodedPassword = "encodedPassword";
 			when(bCryptPasswordEncoder.encode(registerUserRequest.password())).thenReturn(encodedPassword);
@@ -121,7 +124,8 @@ class UserServiceTest {
 				userFixture.getLoginId(),
 				userFixture.getPassword(),
 				userFixture.getEmail(),
-				userFixture.getName()
+				userFixture.getName(),
+				false
 			);
 			when(userRepository.existsByLoginId(userFixture.getLoginId())).thenReturn(true);
 
@@ -138,7 +142,8 @@ class UserServiceTest {
 				userFixture.getLoginId(),
 				userFixture.getPassword(),
 				userFixture.getEmail(),
-				userFixture.getName()
+				userFixture.getName(),
+				false
 			);
 			String encodedPassword = "encodedPassword";
 			when(bCryptPasswordEncoder.encode(registerUserRequest.password())).thenReturn(encodedPassword);
@@ -162,7 +167,8 @@ class UserServiceTest {
 				userFixture.getLoginId(),
 				userFixture.getPassword(),
 				userFixture.getEmail(),
-				userFixture.getName()
+				userFixture.getName(),
+				false
 			);
 			when(userRepository.existsByEmail(userFixture.getEmail())).thenReturn(true);
 
@@ -179,7 +185,8 @@ class UserServiceTest {
 				userFixture.getLoginId(),
 				userFixture.getPassword(),
 				userFixture.getEmail(),
-				userFixture.getName()
+				userFixture.getName(),
+				false
 			);
 			String encodedPassword = "encodedPassword";
 			when(bCryptPasswordEncoder.encode(registerUserRequest.password())).thenReturn(encodedPassword);
@@ -193,6 +200,31 @@ class UserServiceTest {
 		    //then
 			verify(userRepository, times(1)).save(any(User.class));
 		}
+
+		@Test
+		void 강사로_회원가입을_한다() {
+			//given
+			User userFixture = UserFixture.USER_FIXTURE_1.createCreator();
+			RegisterUserRequest registerUserRequest = new RegisterUserRequest(
+				userFixture.getLoginId(),
+				userFixture.getPassword(),
+				userFixture.getEmail(),
+				userFixture.getName(),
+				true
+			);
+			String encodedPassword = "encodedPassword";
+			when(bCryptPasswordEncoder.encode(registerUserRequest.password())).thenReturn(encodedPassword);
+			User newUser = registerUserRequest.toEntity(encodedPassword);
+
+			when(userRepository.save(any(User.class))).thenReturn(newUser);
+
+			//when
+			userService.register(registerUserRequest);
+
+			//then
+			verify(userRepository, times(1)).save(any(User.class));
+			assertThat(newUser.getRole().getKey()).isEqualTo(userFixture.getRole().getKey());
+		}
 		
 		@Test
 		void 회원_저장_시_DB_유니크_제약조건으로_예외를_반환한다() {
@@ -202,7 +234,8 @@ class UserServiceTest {
 				userFixture.getLoginId(),
 				userFixture.getPassword(),
 				userFixture.getEmail(),
-				userFixture.getName()
+				userFixture.getName(),
+				false
 			);
 			when(userRepository.save(any(User.class)))
 				.thenThrow(DataIntegrityViolationException.class);

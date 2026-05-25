@@ -1,6 +1,5 @@
 package com.example.academy.support.fixture;
 
-import com.example.academy.identity.domain.user.Role;
 import com.example.academy.identity.domain.user.User;
 
 public enum UserFixture {
@@ -21,6 +20,10 @@ public enum UserFixture {
 	}
 
 	public User create() {
-		return new User(loginId, password, email, name, Role.USER);
+		return User.register(loginId, password, email, name);
+	}
+
+	public User createCreator() {
+		return User.registerAsCreator(loginId, password, email, name);
 	}
 }

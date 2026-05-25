@@ -13,6 +13,7 @@ import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import com.example.academy.common.exception.CustomException;
 import com.example.academy.common.exception.NotFoundException;
 import com.example.academy.identity.application.UserService;
+import com.example.academy.identity.domain.user.Role;
 import com.example.academy.identity.domain.user.User;
 import com.example.academy.identity.domain.user.UserRepository;
 import com.example.academy.identity.presentation.dto.request.user.RegisterUserRequest;
@@ -45,7 +46,8 @@ class UserServiceIntegrationTest extends IntegrationSupportTest {
 				userFixture.getLoginId(),
 				userFixture.getPassword(),
 				userFixture.getEmail(),
-				userFixture.getName()
+				userFixture.getName(),
+				false
 			);
 			//when
 			Long userId = userService.register(requestDto);
@@ -63,6 +65,33 @@ class UserServiceIntegrationTest extends IntegrationSupportTest {
 		}
 
 		@Test
+		void 강사로_회원가입을_한다() {
+			//given
+			User userFixture = UserFixture.USER_FIXTURE_2.createCreator();
+			RegisterUserRequest requestDto = new RegisterUserRequest(
+				userFixture.getLoginId(),
+				userFixture.getPassword(),
+				userFixture.getEmail(),
+				userFixture.getName(),
+				true
+			);
+			//when
+			Long userId = userService.register(requestDto);
+
+			//then
+			User user = userRepository.findById(userId)
+				.orElseThrow(() -> new AssertionError(USER_NOT_SAVED_MESSAGE));
+
+			assertAll(
+				() -> assertThat(user.getLoginId()).isEqualTo(requestDto.loginId()),
+				() -> assertThat(user.getEmail()).isEqualTo(requestDto.email()),
+				() -> assertThat(user.getName()).isEqualTo(requestDto.name()),
+				() -> assertThat(user.getRole().getKey()).isEqualTo(Role.CREATOR.getKey()),
+				() -> assertThat(bCryptPasswordEncoder.matches(requestDto.password(), user.getPassword())).isTrue()
+			);
+		}
+
+		@Test
 		void 아이디가_중복이면_예외를_반환한다() {
 		    //given
 			String loginId = "testLoginId";
@@ -71,7 +100,8 @@ class UserServiceIntegrationTest extends IntegrationSupportTest {
 				loginId,
 				"test1@1234",
 				"test1@test.com",
-				"홍길동"
+				"홍길동",
+				false
 			);
 			userService.register(otherRequestDto);
 
@@ -79,7 +109,8 @@ class UserServiceIntegrationTest extends IntegrationSupportTest {
 				loginId,
 				"test2@1234",
 				"test2@test.com",
-				"아이디중복유저"
+				"아이디중복유저",
+				false
 			);
 
 			//when & then
@@ -96,7 +127,8 @@ class UserServiceIntegrationTest extends IntegrationSupportTest {
 				"testUser1",
 				"test1@1234",
 				email,
-				"홍길동"
+				"홍길동",
+				false
 			);
 			userService.register(otherRequestDto);
 
@@ -104,7 +136,8 @@ class UserServiceIntegrationTest extends IntegrationSupportTest {
 				"testUser2",
 				"test2@1234",
 				email,
-				"이메일중복유저"
+				"이메일중복유저",
+				false
 			);
 
 			//when & then
@@ -125,7 +158,8 @@ class UserServiceIntegrationTest extends IntegrationSupportTest {
 				loginId,
 				"test1@1234",
 				"test1@test.com",
-				"홍길동"
+				"홍길동",
+				false
 			);
 			userRepository.save(otherRequestDto.toEntity(bCryptPasswordEncoder.encode(otherRequestDto.password())));
 
@@ -157,7 +191,8 @@ class UserServiceIntegrationTest extends IntegrationSupportTest {
 				"testUser1",
 				"test1@1234",
 				email,
-				"홍길동"
+				"홍길동",
+				false
 			);
 			userRepository.save(otherRequestDto.toEntity(bCryptPasswordEncoder.encode(otherRequestDto.password())));
 

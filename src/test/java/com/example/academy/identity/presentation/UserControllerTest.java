@@ -50,7 +50,8 @@ class UserControllerTest extends RestDocsSupport {
 				userFixture.getLoginId(),
 				userFixture.getPassword(),
 				userFixture.getEmail(),
-				userFixture.getName()
+				userFixture.getName(),
+				false
 			);
 
 			//when
@@ -79,8 +80,44 @@ class UserControllerTest extends RestDocsSupport {
 							fieldWithPath("loginId").description("아이디는 영문 4자리 이상입니다.").type(JsonFieldType.STRING),
 							fieldWithPath("password").description("비밀번호는 특수문자를 포함한 영문과 숫자 8자리 이상입니다.").type(JsonFieldType.STRING),
 							fieldWithPath("email").description("이메일 형식을 지켜주세요.").type(JsonFieldType.STRING),
-							fieldWithPath("name").description("사용자 이름입니다.").type(JsonFieldType.STRING)
+							fieldWithPath("name").description("사용자 이름입니다.").type(JsonFieldType.STRING),
+							fieldWithPath("creator").description("강사 회원가입 여부입니다. (true: 강사)").type(JsonFieldType.BOOLEAN)
 						)
+						.responseSchema(Schema.schema(ApiResponse.class.getSimpleName()))
+						.build())
+				));
+		}
+
+		@Test
+		void 강사_회원가입_2XX() throws Exception {
+			//given
+			User userFixture = UserFixture.USER_FIXTURE_2.createCreator();
+			Mockito.when(userService.register(any(RegisterUserRequest.class)))
+				.thenReturn(any(Long.class));
+			RegisterUserRequest requestDto = new RegisterUserRequest(
+				userFixture.getLoginId(),
+				userFixture.getPassword(),
+				userFixture.getEmail(),
+				userFixture.getName(),
+				true
+			);
+
+			//when
+			ResultActions actions = mockMvc.perform(
+				post(BASE_URI)
+					.content(objectMapper.writeValueAsString(requestDto))
+					.contentType(MediaType.APPLICATION_JSON));
+
+			//then
+			actions
+
+				.andExpect(status().isOk())
+				.andExpect(jsonPath("$.message").value(BASE_SUCCESS_MESSAGE))
+				.andExpect(jsonPath("$.data").isNotEmpty())
+				.andDo(restDocsHandler.document(
+					ResourceDocumentation.resource(ResourceSnippetParameters.builder()
+						.tag(BASE_TAG)
+						.requestSchema(Schema.schema(RegisterUserRequest.class.getSimpleName()))
 						.responseSchema(Schema.schema(ApiResponse.class.getSimpleName()))
 						.build())
 				));
@@ -100,7 +137,8 @@ class UserControllerTest extends RestDocsSupport {
 				"duplicateId",
 				userFixture.getPassword(),
 				userFixture.getEmail(),
-				userFixture.getName()
+				userFixture.getName(),
+				false
 			);
 
 			//when
@@ -138,7 +176,8 @@ class UserControllerTest extends RestDocsSupport {
 				userFixture.getLoginId(),
 				userFixture.getPassword(),
 				"duplicate@test.com",
-				userFixture.getName()
+				userFixture.getName(),
+				false
 			);
 
 			//when
@@ -172,7 +211,8 @@ class UserControllerTest extends RestDocsSupport {
 				userFixture.getLoginId(),
 				"1234",
 				userFixture.getEmail(),
-				userFixture.getName()
+				userFixture.getName(),
+				false
 			);
 
 			//when
@@ -367,7 +407,8 @@ class UserControllerTest extends RestDocsSupport {
 								fieldWithPath("message").description("성공 응답 메세지입니다.").type(JsonFieldType.STRING),
 								fieldWithPath("data.loginId").description("사용자 아이디입니다.").type(JsonFieldType.STRING),
 								fieldWithPath("data.email").description("사용자 이메일입니다.").type(JsonFieldType.STRING),
-								fieldWithPath("data.name").description("사용자 이름입니다.").type(JsonFieldType.STRING)
+								fieldWithPath("data.name").description("사용자 이름입니다.").type(JsonFieldType.STRING),
+								fieldWithPath("data.role").description("사용자 역할입니다.(강사: CREATOR, 수강생: USER)").type(JsonFieldType.STRING)
 							)
 							.build())
 					)
@@ -408,7 +449,8 @@ class UserControllerTest extends RestDocsSupport {
 							.responseFields(
 								fieldWithPath("message").description("성공 응답 메세지입니다.").type(JsonFieldType.STRING),
 								fieldWithPath("data.email").description("사용자 이메일입니다.").type(JsonFieldType.STRING),
-								fieldWithPath("data.name").description("사용자 이름입니다.").type(JsonFieldType.STRING)
+								fieldWithPath("data.name").description("사용자 이름입니다.").type(JsonFieldType.STRING),
+								fieldWithPath("data.role").description("사용자 역할입니다.(강사: CREATOR, 수강생: USER)").type(JsonFieldType.STRING)
 							)
 							.build()
 						)
