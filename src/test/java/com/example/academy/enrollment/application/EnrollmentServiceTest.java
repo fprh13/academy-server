@@ -233,6 +233,59 @@ class EnrollmentServiceTest {
 		}
 	}
 
+	@Nested
+	@DisplayName("수강 신청 취소")
+	class CancelEnrollment {
+		@Test
+		void 본인의_결제_대기_상태_수강_신청을_취소한다() {
+			// given
+			Long enrollmentId = 10L;
+			Long userId = 2L;
+			Enrollment enrollment = createPendingEnrollment(enrollmentId, userId);
+
+			Mockito.when(enrollmentRepository.findById(enrollmentId))
+				.thenReturn(Optional.of(enrollment));
+
+			// when
+			enrollmentService.cancel(enrollmentId, userId);
+
+			// then
+			assertThat(enrollment.isPending()).isTrue();
+			assertThat(enrollment.getCancelledAt()).isNull();
+			assertThat(enrollment.getCourse().getCapacity().getCurrent()).isZero();
+		}
+
+		@Test
+		void 본인의_수강_신청이_아니면_취소할_수_없다() {
+			// given
+			Long enrollmentId = 10L;
+			Long userId = 2L;
+			Long otherUserId = 3L;
+			Enrollment enrollment = createPendingEnrollment(enrollmentId, userId);
+
+			Mockito.when(enrollmentRepository.findById(enrollmentId))
+				.thenReturn(Optional.of(enrollment));
+
+			// when & then
+			assertThatThrownBy(() -> enrollmentService.cancel(enrollmentId, otherUserId))
+				.isInstanceOf(ForbiddenException.class);
+		}
+
+		@Test
+		void 수강_신청이_없으면_취소할_수_없다() {
+			// given
+			Long enrollmentId = 10L;
+			Long userId = 2L;
+
+			Mockito.when(enrollmentRepository.findById(enrollmentId))
+				.thenReturn(Optional.empty());
+
+			// when & then
+			assertThatThrownBy(() -> enrollmentService.cancel(enrollmentId, userId))
+				.isInstanceOf(NotFoundException.class);
+		}
+	}
+
 	private Enrollment createPendingEnrollment(Long enrollmentId, Long userId) {
 		Course course = createOpenCourse(1L);
 		User user = createUser(userId);

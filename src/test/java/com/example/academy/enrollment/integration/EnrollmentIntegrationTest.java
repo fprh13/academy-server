@@ -14,6 +14,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import com.example.academy.common.exception.ConflictException;
 import com.example.academy.common.exception.ForbiddenException;
 import com.example.academy.common.exception.NotFoundException;
+import com.example.academy.common.exception.BadRequestException;
 import com.example.academy.course.domain.Capacity;
 import com.example.academy.course.domain.Course;
 import com.example.academy.course.domain.CourseRepository;
@@ -182,6 +183,61 @@ class EnrollmentIntegrationTest extends IntegrationSupportTest {
 			// when & then
 			assertThatThrownBy(() -> enrollmentService.confirm(enrollmentId, user.getId()))
 				.isInstanceOf(ConflictException.class);
+		}
+	}
+
+	@Nested
+	@DisplayName("수강 취소 기능")
+	class CancelEnrollmentTest {
+		@Test
+		void 본인의_결제_대기_상태_수강_신청을_취소한다() {
+			// given
+			User creator = userRepository.save(UserFixture.USER_FIXTURE_1.createCreator());
+			Course course = createSavedOpenCourse(creator);
+
+			User user = userRepository.save(UserFixture.USER_FIXTURE_2.create());
+			Long enrollmentId = enrollmentService.apply(course.getId(), user.getId());
+
+			// when
+			enrollmentService.cancel(enrollmentId, user.getId());
+
+			// then
+			Enrollment enrollment = enrollmentRepository.findById(enrollmentId)
+				.orElseThrow(() -> new AssertionError("수강 신청이 저장되지 않았습니다."));
+			Course savedCourse = courseRepository.findById(course.getId())
+				.orElseThrow(() -> new AssertionError("강의가 저장되지 않았습니다."));
+
+			assertAll(
+				() -> assertThat(enrollment.getState()).isEqualTo(EnrollmentState.PENDING),
+				() -> assertThat(enrollment.getCancelledAt()).isNull(),
+				() -> assertThat(savedCourse.getCapacity().getCurrent()).isZero()
+			);
+		}
+
+		@Test
+		void 본인의_수강_신청이_아니라면_예외를_반환한다() {
+			// given
+			User creator = userRepository.save(UserFixture.USER_FIXTURE_1.createCreator());
+			Course course = createSavedOpenCourse(creator);
+
+			User user = userRepository.save(UserFixture.USER_FIXTURE_2.create());
+			Long enrollmentId = enrollmentService.apply(course.getId(), user.getId());
+
+			User otherUser = userRepository.save(UserFixture.USER_FIXTURE_3.create());
+
+			// when & then
+			assertThatThrownBy(() -> enrollmentService.cancel(enrollmentId, otherUser.getId()))
+				.isInstanceOf(ForbiddenException.class);
+		}
+
+		@Test
+		void 수강_신청이_없다면_예외를_반환한다() {
+			// given
+			User user = userRepository.save(UserFixture.USER_FIXTURE_2.create());
+
+			// when & then
+			assertThatThrownBy(() -> enrollmentService.cancel(999L, user.getId()))
+				.isInstanceOf(NotFoundException.class);
 		}
 	}
 
