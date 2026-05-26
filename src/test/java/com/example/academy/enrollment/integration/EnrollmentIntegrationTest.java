@@ -12,6 +12,8 @@ import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 
+import com.example.academy.common.presentation.dto.PagingRequest;
+import com.example.academy.common.presentation.dto.PagingResponse;
 import com.example.academy.common.exception.ConflictException;
 import com.example.academy.common.exception.ForbiddenException;
 import com.example.academy.common.exception.NotFoundException;
@@ -23,6 +25,7 @@ import com.example.academy.enrollment.application.EnrollmentService;
 import com.example.academy.enrollment.domain.Enrollment;
 import com.example.academy.enrollment.domain.EnrollmentRepository;
 import com.example.academy.enrollment.domain.EnrollmentState;
+import com.example.academy.enrollment.presentation.dto.response.EnrollmentInfoResponse;
 import com.example.academy.identity.domain.user.User;
 import com.example.academy.identity.domain.user.UserRepository;
 import com.example.academy.support.IntegrationSupportTest;
@@ -321,9 +324,124 @@ class EnrollmentIntegrationTest extends IntegrationSupportTest {
 		}
 	}
 
+	@Nested
+	@DisplayName("수강 신청 목록 조회 기능")
+	class GetEnrollmentsTest {
+		@Test
+		void 상태값이_없으면_수강대기와_수강확정_목록만_조회한다() {
+			// given
+			User creator = userRepository.save(UserFixture.USER_FIXTURE_1.createCreator());
+			User user = userRepository.save(UserFixture.USER_FIXTURE_2.create());
+			Course firstCourse = createSavedOpenCourse(creator);
+			Course secondCourse = createSavedOpenCourse(creator);
+			Course thirdCourse = createSavedOpenCourse(creator);
+
+			Enrollment pendingEnrollment = createSavedPendingEnrollment(firstCourse, user);
+			Enrollment confirmedEnrollment = createSavedConfirmedEnrollment(secondCourse, user, LocalDateTime.now());
+			createSavedCancelledEnrollment(thirdCourse, user, LocalDateTime.now().minusDays(1), LocalDateTime.now());
+
+			PagingRequest request = new PagingRequest(1, 10, null);
+
+			// when
+			PagingResponse<EnrollmentInfoResponse> response = enrollmentService.gets(request, null, user.getId());
+
+			// then
+			assertAll(
+				() -> assertThat(response.content()).hasSize(2),
+				() -> assertThat(response.page().number()).isEqualTo(1),
+				() -> assertThat(response.page().size()).isEqualTo(10),
+				() -> assertThat(response.page().totalElements()).isEqualTo(2),
+				() -> assertThat(response.page().totalPages()).isEqualTo(1),
+				() -> assertThat(response.page().hasNext()).isFalse(),
+				() -> assertThat(response.page().hasPrevious()).isFalse(),
+
+				() -> assertThat(response.content().stream()
+					.map(EnrollmentInfoResponse::state))
+					.containsExactly("PENDING", "CONFIRMED"),
+				() -> assertThat(response.content().stream()
+					.map(EnrollmentInfoResponse::enrollmentId))
+					.containsExactly(pendingEnrollment.getId(), confirmedEnrollment.getId())
+			);
+		}
+
+		@Test
+		void confirmed_조건이면_결제확정_목록만_조회한다() {
+			// given
+			User creator = userRepository.save(UserFixture.USER_FIXTURE_1.createCreator());
+			User user = userRepository.save(UserFixture.USER_FIXTURE_2.create());
+			Course pendingCourse = createSavedOpenCourse(creator);
+			Course confirmedCourse = createSavedOpenCourse(creator);
+			Course cancelledCourse = createSavedOpenCourse(creator);
+
+			createSavedPendingEnrollment(pendingCourse, user);
+			Enrollment confirmedEnrollment = createSavedConfirmedEnrollment(confirmedCourse, user, LocalDateTime.now());
+			createSavedCancelledEnrollment(cancelledCourse, user, LocalDateTime.now().minusDays(1), LocalDateTime.now());
+
+			PagingRequest request = new PagingRequest(1, 10, null);
+
+			// when
+			PagingResponse<EnrollmentInfoResponse> response = enrollmentService.gets(request, "confirmed", user.getId());
+
+			// then
+			assertAll(
+				() -> assertThat(response.content()).hasSize(1),
+				() -> assertThat(response.content().get(0).enrollmentId()).isEqualTo(confirmedEnrollment.getId()),
+				() -> assertThat(response.content().get(0).state()).isEqualTo("CONFIRMED"),
+				() -> assertThat(response.page().totalElements()).isEqualTo(1)
+			);
+		}
+
+		@Test
+		void cancelled_조건이면_취소_목록만_조회한다() {
+			// given
+			User creator = userRepository.save(UserFixture.USER_FIXTURE_1.createCreator());
+			User user = userRepository.save(UserFixture.USER_FIXTURE_2.create());
+			Course pendingCourse = createSavedOpenCourse(creator);
+			Course confirmedCourse = createSavedOpenCourse(creator);
+			Course cancelledCourse = createSavedOpenCourse(creator);
+
+			createSavedPendingEnrollment(pendingCourse, user);
+			createSavedConfirmedEnrollment(confirmedCourse, user, LocalDateTime.now());
+			Enrollment cancelledEnrollment = createSavedCancelledEnrollment(
+				cancelledCourse,
+				user,
+				LocalDateTime.now().minusDays(1),
+				LocalDateTime.now()
+			);
+
+			PagingRequest request = new PagingRequest(1, 10, null);
+
+			// when
+			PagingResponse<EnrollmentInfoResponse> response = enrollmentService.gets(request, "cancelled", user.getId());
+
+			// then
+			assertAll(
+				() -> assertThat(response.content()).hasSize(1),
+				() -> assertThat(response.content().get(0).enrollmentId()).isEqualTo(cancelledEnrollment.getId()),
+				() -> assertThat(response.content().get(0).state()).isEqualTo("CANCELLED"),
+				() -> assertThat(response.page().totalElements()).isEqualTo(1)
+			);
+		}
+	}
+
+	private Enrollment createSavedPendingEnrollment(Course course, User user) {
+		return enrollmentRepository.save(Enrollment.apply(course, user));
+	}
+
 	private Enrollment createSavedConfirmedEnrollment(Course course, User user, LocalDateTime paidAt) {
-		Enrollment enrollment = enrollmentRepository.save(Enrollment.apply(course, user));
+		Enrollment enrollment = createSavedPendingEnrollment(course, user);
 		enrollment.confirmPayment(paidAt);
+		return enrollment;
+	}
+
+	private Enrollment createSavedCancelledEnrollment(
+		Course course,
+		User user,
+		LocalDateTime paidAt,
+		LocalDateTime cancelledAt
+	) {
+		Enrollment enrollment = createSavedConfirmedEnrollment(course, user, paidAt);
+		enrollment.cancelConfirmed(cancelledAt);
 		return enrollment;
 	}
 
