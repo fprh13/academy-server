@@ -85,6 +85,7 @@ public class SecurityConfig {
 					).authenticated()
 
 					.requestMatchers(
+						mvc.matcher(GET, ENROLLMENT_URI),
 						mvc.matcher(POST, ENROLLMENT_URI),
 						mvc.matcher(POST, ENROLLMENT_URI + "/{enrollmentId}/confirm"),
 						mvc.matcher(POST, ENROLLMENT_URI + "/{enrollmentId}/cancel"),
