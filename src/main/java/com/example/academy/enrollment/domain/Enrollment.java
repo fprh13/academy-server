@@ -2,6 +2,7 @@ package com.example.academy.enrollment.domain;
 
 import java.time.LocalDateTime;
 
+import com.example.academy.common.domain.AccessPolicy;
 import com.example.academy.common.domain.AggregateRoot;
 import com.example.academy.common.exception.BadRequestException;
 import com.example.academy.common.exception.ConflictException;
@@ -24,7 +25,7 @@ import lombok.NoArgsConstructor;
 @Table(name = "enrollments")
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
-public class Enrollment extends AggregateRoot<Enrollment> {
+public class Enrollment extends AggregateRoot<Enrollment> implements AccessPolicy {
 
 	@Enumerated(EnumType.STRING)
 	@Column(name = "state", length = 20, nullable = false)
@@ -92,5 +93,15 @@ public class Enrollment extends AggregateRoot<Enrollment> {
 
 	public boolean isCancelled() {
 		return state == EnrollmentState.CANCELLED;
+	}
+
+	@Override
+	public boolean canRead(Long userId) {
+		return this.user.getId().equals(userId);
+	}
+
+	@Override
+	public boolean canWrite(Long userId) {
+		return this.user.getId().equals(userId);
 	}
 }

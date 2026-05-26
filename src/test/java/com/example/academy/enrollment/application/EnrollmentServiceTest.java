@@ -1,8 +1,10 @@
 package com.example.academy.enrollment.application;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 
+import java.time.LocalDateTime;
 import java.util.Optional;
 
 import org.junit.jupiter.api.DisplayName;
@@ -16,6 +18,8 @@ import org.mockito.Mockito;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.test.util.ReflectionTestUtils;
 
+import com.example.academy.common.exception.ForbiddenException;
+import com.example.academy.common.exception.NotFoundException;
 import com.example.academy.course.domain.Course;
 import com.example.academy.course.domain.CourseRepository;
 import com.example.academy.enrollment.domain.Enrollment;
@@ -155,20 +159,100 @@ class EnrollmentServiceTest {
 			assertThat(enrollment.getCourse()).isSameAs(course);
 			assertThat(enrollment.getUser()).isSameAs(user);
 		}
+	}
 
-		private Course createOpenCourse(Long courseId) {
-			User creator = UserFixture.USER_FIXTURE_1.createCreator();
-			Course course = CourseFixture.COURSE_FIXTURE_1.create(creator);
-			course.open();
-			ReflectionTestUtils.setField(course, "id", courseId);
-			return course;
+	@Nested
+	@DisplayName("수강 확정")
+	class ConfirmEnrollment {
+		@Test
+		void 본인의_결제_대기_상태_수강_신청을_확정한다() {
+			// given
+			Long enrollmentId = 10L;
+			Long userId = 2L;
+
+			Enrollment enrollment = createPendingEnrollment(enrollmentId, userId);
+
+			Mockito.when(enrollmentRepository.findById(enrollmentId))
+				.thenReturn(Optional.of(enrollment));
+
+			// when
+			enrollmentService.confirm(enrollmentId, userId);
+
+			// then
+			assertThat(enrollment.isConfirmed()).isTrue();
+			assertThat(enrollment.getPaidAt()).isNotNull();
 		}
 
-		private User createUser(Long userId) {
-			User user = UserFixture.USER_FIXTURE_2.create();
-			ReflectionTestUtils.setField(user, "id", userId);
-			return user;
+		@Test
+		void 수강_신청을_조회한다() {
+			// given
+			Long enrollmentId = 10L;
+			Long userId = 2L;
+			Enrollment enrollment = createPendingEnrollment(enrollmentId, userId);
+
+			Mockito.when(enrollmentRepository.findById(enrollmentId))
+				.thenReturn(Optional.of(enrollment));
+
+			// when
+			enrollmentService.confirm(enrollmentId, userId);
+
+			// then
+			Mockito.verify(enrollmentRepository, Mockito.times(1))
+				.findById(enrollmentId);
 		}
+
+		@Test
+		void 본인의_수강_신청이_아니면_확정할_수_없다() {
+			// given
+			Long enrollmentId = 10L;
+			Long userId = 2L;
+			Long otherUserId = 3L;
+
+			Enrollment enrollment = createPendingEnrollment(enrollmentId, userId);
+
+			Mockito.when(enrollmentRepository.findById(enrollmentId))
+				.thenReturn(Optional.of(enrollment));
+
+			// when & then
+			assertThatThrownBy(() -> enrollmentService.confirm(enrollmentId, otherUserId))
+				.isInstanceOf(ForbiddenException.class);
+		}
+
+		@Test
+		void 수강_신청이_없으면_확정할_수_없다() {
+			// given
+			Long enrollmentId = 10L;
+			Long userId = 2L;
+
+			Mockito.when(enrollmentRepository.findById(enrollmentId))
+				.thenReturn(Optional.empty());
+
+			// when & then
+			assertThatThrownBy(() -> enrollmentService.confirm(enrollmentId, userId))
+				.isInstanceOf(NotFoundException.class);
+		}
+	}
+
+	private Enrollment createPendingEnrollment(Long enrollmentId, Long userId) {
+		Course course = createOpenCourse(1L);
+		User user = createUser(userId);
+		Enrollment enrollment = Enrollment.apply(course, user);
+		ReflectionTestUtils.setField(enrollment, "id", enrollmentId);
+		return enrollment;
+	}
+
+	private Course createOpenCourse(Long courseId) {
+		User creator = UserFixture.USER_FIXTURE_1.createCreator();
+		Course course = CourseFixture.COURSE_FIXTURE_1.create(creator);
+		course.open();
+		ReflectionTestUtils.setField(course, "id", courseId);
+		return course;
+	}
+
+	private User createUser(Long userId) {
+		User user = UserFixture.USER_FIXTURE_2.create();
+		ReflectionTestUtils.setField(user, "id", userId);
+		return user;
 	}
 
 }

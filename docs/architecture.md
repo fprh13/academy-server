@@ -23,19 +23,20 @@
 
 ## 현재 상태 한눈에 보기
 
-현재 저장소에서 실제 구현된 주요 컨텍스트는 아래 두 개입니다.
+현재 저장소에서 실제 구현된 주요 컨텍스트는 아래 네 개입니다.
 
 - `common`: 공통 응답, 예외 처리, 웹 설정, 보안 설정
 - `identity`: 회원 가입, 로그인, 인증 사용자 조회
+- `course`: 강의 등록, 강의 상세 조회, 강의 목록 조회
+- `enrollment`: 수강 신청, 수강 확정
 
-아래 컨텍스트는 `docs/requirements.md` 기준으로 앞으로 구현될 대상입니다.
+현재 코드 기준으로 `identity`, `course`, `enrollment`는 모두 controller, application service, domain, infrastructure, 테스트가 연결된 상태입니다.
 
-- `course`: 강의 개설, 상태, 정원, 기간
-- `enrollment`: 수강 신청, 결제 확정, 취소, 정원 정책
+다만 `docs/requirements.md`에 있는 전체 범위가 모두 끝난 것은 아닙니다.
 
-즉, 이 저장소는 현재 `identity`를 중심으로 기본 백엔드 골격을 먼저 갖춘 상태입니다.
-
-`course`, `enrollment`는 문서상 목표 구조를 먼저 정의해 두고, 실제 코드는 이후 그 구조를 따라 확장하는 것이 기준입니다.
+- `course`: 상태 전이 API는 아직 열려 있지 않습니다.
+- `enrollment`: 취소, 내 신청 목록 조회, 대기열, 크리에이터용 수강생 목록 조회는 아직 구현 범위로 남아 있습니다.
+- 정원 동시성 처리 전략도 별도 강화가 필요한 상태입니다.
 
 ---
 
@@ -47,11 +48,17 @@
 2. `src/main/java/com/example/academy/common/infrastructure/config/WebConfig.java`
 3. `src/main/java/com/example/academy/identity/presentation/AuthController.java`
 4. `src/main/java/com/example/academy/identity/presentation/UserController.java`
-5. `src/main/java/com/example/academy/common/presentation/advice/ControllerExceptionAdvice.java`
-6. `src/main/java/com/example/academy/identity/application`
-7. `src/main/java/com/example/academy/identity/domain`
+5. `src/main/java/com/example/academy/course/presentation/CourseController.java`
+6. `src/main/java/com/example/academy/enrollment/presentation/EnrollmentController.java`
+7. `src/main/java/com/example/academy/common/presentation/advice/ControllerExceptionAdvice.java`
+8. `src/main/java/com/example/academy/identity/application`
+9. `src/main/java/com/example/academy/course/application`
+10. `src/main/java/com/example/academy/enrollment/application`
+11. `src/main/java/com/example/academy/identity/domain`
+12. `src/main/java/com/example/academy/course/domain`
+13. `src/main/java/com/example/academy/enrollment/domain`
 
-이 순서로 보면 인증 진입점, 인증 사용자 주입 방식, HTTP 요청 처리 방식, 예외 규약, 애플리케이션 계층 흐름을 짧게 파악할 수 있습니다.
+이 순서로 보면 인증 진입점, 인증 사용자 주입 방식, 강의/수강 신청 유스케이스, 예외 규약, 애플리케이션 계층 흐름을 짧게 파악할 수 있습니다.
 
 ---
 
@@ -119,37 +126,60 @@
 
 `course`는 강의 자체를 소유하는 컨텍스트입니다.
 
-`docs/requirements.md` 기준 목표 책임:
+현재 구현된 책임:
 
 - 강의 등록
-- 강의 상태 전이 (`DRAFT -> OPEN -> CLOSED`)
-- 가격, 정원, 수강 기간 관리
 - 강의 목록/상세 조회
-- 현재 신청 인원 집계에 필요한 조회 모델 제공
+- 가격, 정원, 수강 기간 관리
+- 현재 신청 인원 집계
+- 강의 생성 시 강사 권한 검증
 
 아키텍처 원칙:
 
 - 강의 상태와 정원 같은 규칙은 `course` 도메인이 소유합니다.
 - 수강 신청 자체의 생성/확정/취소는 `enrollment`가 담당하되, 신청 가능 여부 판단에 필요한 강의 상태와 정원 정보는 `course`와 협력합니다.
 
+현재 코드에서 확인되는 핵심 개념:
+
+- `Course`: 강의 어그리게이트
+- `Capacity`: 최대 정원과 현재 신청 인원을 함께 관리하는 VO
+- `CourseState`: `DRAFT`, `OPEN`, `CLOSED`
+- `CourseRepository`: 강의 저장소 인터페이스
+
+주의:
+
+- `Course` 도메인에는 `open`, `close` 메서드가 있지만, 이를 호출하는 application/presentation 유스케이스는 아직 없습니다.
+- 현재 목록 조회는 기본적으로 `OPEN`, `CLOSED`만 노출하고, `DRAFT`는 제외합니다.
+
 ### 4. `enrollment`
 
 `enrollment`는 수강 신청 라이프사이클을 소유하는 컨텍스트입니다.
 
-`docs/requirements.md` 기준 목표 책임:
+현재 구현된 책임:
 
 - 수강 신청 생성
 - 신청 상태 전이 (`PENDING -> CONFIRMED -> CANCELLED`)
 - 결제 확정 처리
-- 취소 가능 기간 검증
-- 내 수강 신청 목록 조회
 - 정원 초과 방지 정책 적용
+- 본인 수강 신청만 확정 가능한 접근 제어
 
 아키텍처 원칙:
 
 - 신청 상태와 취소 규칙은 `enrollment` 도메인이 소유합니다.
 - 결제 연동이 단순 상태 변경이라면 외부 PG 연동 계층 없이 application service에서 유스케이스를 조합해도 됩니다.
 - 마지막 좌석 동시 경쟁 같은 문제는 `enrollment` 구현 시 명시적으로 다뤄야 합니다.
+
+현재 코드에서 확인되는 핵심 개념:
+
+- `Enrollment`: 수강 신청 어그리게이트
+- `EnrollmentState`: `PENDING`, `CONFIRMED`, `CANCELLED`
+- `EnrollmentCancelPolicy`: 결제 후 7일 취소 가능 규칙
+- `EnrollmentRepository`: 수강 신청 저장소 인터페이스
+
+주의:
+
+- 취소 규칙 자체는 도메인에 들어가 있지만, 현재 application/presentation 계층에는 취소 유스케이스가 아직 연결되지 않았습니다.
+- 현재 application service는 `apply`, `confirm`만 제공합니다.
 
 ---
 
@@ -262,6 +292,64 @@ Client request
 - 실제 `User` 엔티티 조회는 `AuthUserResolver`에서 한 번 더 수행합니다.
 - 따라서 "필터에서 DB 조회는 생략"이 현재 구조의 정확한 표현이며, 요청 전체 기준으로는 인증 사용자 조회가 발생할 수 있습니다.
 
+### 4. 강의 등록
+
+현재 강의 등록 흐름은 아래와 같습니다.
+
+```text
+Client
+  -> CourseController.register()
+  -> CourseService.registerCourse()
+  -> UserRepository.findById()
+  -> RegisterCourseRequest.toEntity()
+  -> CourseRepository.save()
+```
+
+의미:
+
+- 강사 여부 검증은 `Course` 생성 시점에 도메인에서 수행합니다.
+- 강의 생성 직후 상태는 `DRAFT`입니다.
+- 현재 API는 강의 생성, 상세 조회, 목록 조회까지 연결되어 있습니다.
+
+### 5. 수강 신청
+
+현재 수강 신청 흐름은 아래와 같습니다.
+
+```text
+Client
+  -> EnrollmentController.apply()
+  -> EnrollmentService.apply()
+  -> CourseRepository.findById()
+  -> UserRepository.findById()
+  -> Enrollment.apply(course, user)
+  -> course.increaseEnrollmentCount()
+  -> EnrollmentRepository.save()
+```
+
+의미:
+
+- 정원 차감은 별도 서비스가 아니라 `Enrollment` 생성 과정에서 `Course` 어그리게이트와 협력해 처리합니다.
+- 신청 가능 여부는 `Course.validateCanEnroll()` 규칙에 의해 보장됩니다.
+- 현재 구현은 정원 초과를 도메인 규칙으로 막지만, 마지막 좌석 동시성에 대한 별도 락 전략은 아직 없습니다.
+
+### 6. 수강 확정
+
+현재 수강 확정 흐름은 아래와 같습니다.
+
+```text
+Client
+  -> EnrollmentController.confirm()
+  -> EnrollmentService.confirm()
+  -> EnrollmentRepository.findById()
+  -> enrollment.canWrite(userId)
+  -> enrollment.confirmPayment(now)
+```
+
+의미:
+
+- 수강 확정은 본인 신청에 대해서만 가능합니다.
+- 결제 연동은 아직 없고, 현재는 상태 변경과 `paidAt` 기록으로 표현합니다.
+
 ---
 
 ## 인증 및 보안 구조
@@ -304,7 +392,7 @@ Client request
 아키텍처 문서에서는 다음 원칙만 기억하면 됩니다.
 
 - 도메인 저장소 인터페이스는 `domain`에 둡니다.
-- JPA 구현체는 `infrastructure/persistence`에 둡니다.
+- JPA 구현체는 각 컨텍스트의 `infrastructure`에 둡니다.
 - 토큰, 보안, 설정은 `infrastructure`에 둡니다.
 
 ---
@@ -328,10 +416,11 @@ Client request
 
 현재 테스트는 아래 축으로 구성되어 있습니다.
 
+- domain 테스트
 - controller 테스트
 - application service 테스트
-- JWT 관련 단위 테스트
 - integration 테스트
+- JWT 관련 단위 테스트
 - RestDocs 지원 테스트
 
 문서 생성 흐름은 테스트에 연결되어 있습니다.
@@ -345,25 +434,25 @@ Client request
 
 ---
 
-## `docs/requirements.md`를 반영한 목표 구조
+## `docs/requirements.md` 대비 남은 범위
 
-`docs/requirements.md`는 아직 코드로 구현되지 않은 요구사항 문서입니다.
+`docs/requirements.md`는 이미 일부 구현이 반영된 요구사항 문서입니다.
 
-이 문서를 실제 아키텍처에 반영할 때는 아래처럼 해석합니다.
+현재 코드 기준으로 아직 남아 있는 범위는 아래처럼 해석합니다.
 
-### `course`가 소유할 것
+### `course`에서 추가로 연결할 수 있는 범위
 
-- 강의 기본 정보
 - 강의 상태 전이
-- 정원과 모집 가능 여부
-- 수강 기간
+- 필요하다면 강의 수정/삭제 정책
 
-### `enrollment`가 소유할 것
+### `enrollment`에서 추가 구현이 필요한 범위
 
-- 신청 생성과 상태 전이
-- 결제 확정 처리
-- 취소 가능 기간 검증
+- 수강 취소 API
+- 취소 가능 기간 검증을 사용하는 취소 유스케이스
 - 내 신청 목록 조회
+- 강의별 수강생 목록 조회
+- 대기열
+- 페이지네이션이 포함된 조회 모델
 
 ### 컨텍스트 협력에서 먼저 결정할 것
 
@@ -375,7 +464,7 @@ Client request
 
 수강 신청 생성 시점에 정원 검증만 하고 저장을 분리하면 마지막 좌석 경쟁에서 정원 초과가 발생할 수 있습니다.
 
-따라서 `enrollment` 구현 시에는 아래 중 하나를 명확히 선택해야 합니다.
+현재 구현에는 별도 락이나 원자적 재고 차감 전략이 없으므로, 아래 중 하나를 명확히 선택해 보강해야 합니다.
 
 - DB 락 기반 직렬화
 - 원자적 업데이트 쿼리 기반 처리
@@ -405,6 +494,6 @@ Client request
 따라서 아래 원칙으로 유지합니다.
 
 1. 현재 구현된 사실과 앞으로의 목표 구조를 구분해서 적습니다.
-2. 구현되지 않은 내용은 "현재 상태"처럼 서술하지 않습니다.
+2. 남은 요구사항은 "현재 구현"처럼 서술하지 않습니다.
 3. 새로운 컨텍스트가 추가되면 패키지 구조보다 먼저 책임 경계를 문서에 반영합니다.
 4. 보안 정책이나 트랜잭션 경계가 바뀌면 이 문서도 함께 갱신합니다.
