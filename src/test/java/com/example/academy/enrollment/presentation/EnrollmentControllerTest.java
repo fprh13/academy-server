@@ -380,4 +380,153 @@ class EnrollmentControllerTest extends RestDocsSupport {
 				));
 		}
 	}
+
+	@Nested
+	@DisplayName("수강 확정 취소 API 테스트")
+	class RefundEnrollmentTest {
+		@Test
+		void 수강_확정_취소_2XX() throws Exception {
+			// given
+			Long enrollmentId = 1L;
+			Mockito.doNothing().when(enrollmentService).cancelConfirm(enrollmentId, 1L);
+
+			// when
+			ResultActions actions = mockMvc.perform(
+				post(BASE_URI + "/{enrollmentId}/refund", enrollmentId)
+					.contentType(MediaType.APPLICATION_JSON));
+
+			// then
+			actions
+				.andExpect(status().isOk())
+				.andExpect(jsonPath("$.message").value(BASE_SUCCESS_MESSAGE))
+				.andExpect(jsonPath("$.data").isEmpty())
+				.andDo(restDocsHandler.document(
+					ResourceDocumentation.resource(ResourceSnippetParameters.builder()
+						.tag(BASE_TAG)
+						.summary("수강 확정 취소")
+						.description("## 수강 확정 취소 기능 \n"
+							+ "### 사용법 \n"
+							+ "- 본인의 결제 확정 상태 수강 신청을 취소합니다.\n"
+							+ "- 결제 후 7일 이내에만 취소할 수 있습니다.\n"
+						)
+						.pathParameters(
+							parameterWithName("enrollmentId").description("수강 확정 취소할 수강 신청의 PK입니다.")
+						)
+						.responseSchema(Schema.schema(ApiResponse.class.getSimpleName()))
+						.build())
+				));
+		}
+
+		@Test
+		void 수강_확정_취소_4XX_수강신청_없음() throws Exception {
+			// given
+			Long enrollmentId = 999L;
+			String errorMessage = Enrollment.class.getSimpleName() + "을(를) 찾을 수 없습니다.";
+
+			Mockito.doThrow(new NotFoundException(Enrollment.class))
+				.when(enrollmentService)
+				.cancelConfirm(enrollmentId, 1L);
+
+			// when
+			ResultActions actions = mockMvc.perform(
+				post(BASE_URI + "/{enrollmentId}/refund", enrollmentId)
+					.contentType(MediaType.APPLICATION_JSON));
+
+			// then
+			actions
+				.andExpect(status().isNotFound())
+				.andExpect(result -> Assertions.assertInstanceOf(NotFoundException.class, result.getResolvedException()))
+				.andExpect(jsonPath("$.message").value(errorMessage))
+				.andDo(restDocsHandler.document(
+					ResourceDocumentation.resource(ResourceSnippetParameters.builder()
+						.tag(BASE_TAG)
+						.responseSchema(Schema.schema(ApiErrorResponse.class.getSimpleName()))
+						.build())
+				));
+		}
+
+		@Test
+		void 수강_확정_취소_4XX_본인_신청_아님() throws Exception {
+			// given
+			Long enrollmentId = 1L;
+			String errorMessage = "접근 권한이 없습니다.";
+
+			Mockito.doThrow(new ForbiddenException())
+				.when(enrollmentService)
+				.cancelConfirm(enrollmentId, 1L);
+
+			// when
+			ResultActions actions = mockMvc.perform(
+				post(BASE_URI + "/{enrollmentId}/refund", enrollmentId)
+					.contentType(MediaType.APPLICATION_JSON));
+
+			// then
+			actions
+				.andExpect(status().isForbidden())
+				.andExpect(result -> Assertions.assertInstanceOf(ForbiddenException.class, result.getResolvedException()))
+				.andExpect(jsonPath("$.message").value(errorMessage))
+				.andDo(restDocsHandler.document(
+					ResourceDocumentation.resource(ResourceSnippetParameters.builder()
+						.tag(BASE_TAG)
+						.responseSchema(Schema.schema(ApiErrorResponse.class.getSimpleName()))
+						.build())
+				));
+		}
+
+		@Test
+		void 수강_확정_취소_4XX_결제_확정_상태_아님() throws Exception {
+			// given
+			Long enrollmentId = 1L;
+			String errorMessage = "결제 확정 상태의 수강 신청만 취소할 수 있습니다.";
+
+			Mockito.doThrow(new ConflictException(errorMessage))
+				.when(enrollmentService)
+				.cancelConfirm(enrollmentId, 1L);
+
+			// when
+			ResultActions actions = mockMvc.perform(
+				post(BASE_URI + "/{enrollmentId}/refund", enrollmentId)
+					.contentType(MediaType.APPLICATION_JSON));
+
+			// then
+			actions
+				.andExpect(status().isConflict())
+				.andExpect(result -> Assertions.assertInstanceOf(ConflictException.class, result.getResolvedException()))
+				.andExpect(jsonPath("$.message").value(errorMessage))
+				.andDo(restDocsHandler.document(
+					ResourceDocumentation.resource(ResourceSnippetParameters.builder()
+						.tag(BASE_TAG)
+						.responseSchema(Schema.schema(ApiErrorResponse.class.getSimpleName()))
+						.build())
+				));
+		}
+
+		@Test
+		void 수강_확정_취소_4XX_취소_가능_기간_초과() throws Exception {
+			// given
+			Long enrollmentId = 1L;
+			String errorMessage = "결제 후 7일이 지나 취소할 수 없습니다.";
+
+			Mockito.doThrow(new BadRequestException(errorMessage))
+				.when(enrollmentService)
+				.cancelConfirm(enrollmentId, 1L);
+
+			// when
+			ResultActions actions = mockMvc.perform(
+				post(BASE_URI + "/{enrollmentId}/refund", enrollmentId)
+					.contentType(MediaType.APPLICATION_JSON));
+
+			// then
+			actions
+				.andExpect(status().isBadRequest())
+				.andExpect(result -> Assertions.assertInstanceOf(BadRequestException.class, result.getResolvedException()))
+				.andExpect(jsonPath("$.message").value(errorMessage))
+				.andDo(restDocsHandler.document(
+					ResourceDocumentation.resource(ResourceSnippetParameters.builder()
+						.tag(BASE_TAG)
+						.responseSchema(Schema.schema(ApiErrorResponse.class.getSimpleName()))
+						.build())
+				));
+		}
+	}
 }
