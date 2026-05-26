@@ -7,10 +7,13 @@ import org.springframework.transaction.annotation.Transactional;
 
 import com.example.academy.common.exception.ForbiddenException;
 import com.example.academy.common.exception.NotFoundException;
+import com.example.academy.common.presentation.dto.PagingRequest;
+import com.example.academy.common.presentation.dto.PagingResponse;
 import com.example.academy.course.domain.Course;
 import com.example.academy.course.domain.CourseRepository;
 import com.example.academy.enrollment.domain.Enrollment;
 import com.example.academy.enrollment.domain.EnrollmentRepository;
+import com.example.academy.enrollment.presentation.dto.response.EnrollmentInfoResponse;
 import com.example.academy.identity.domain.user.User;
 import com.example.academy.identity.domain.user.UserRepository;
 
@@ -75,5 +78,12 @@ public class EnrollmentService {
 
 		LocalDateTime now = LocalDateTime.now();
 		enrollment.cancelConfirmed(now);
+	}
+
+	public PagingResponse<EnrollmentInfoResponse> gets(PagingRequest request, String state, Long userId) {
+		return PagingResponse.from(
+			enrollmentRepository.findPageByUserIdAndStateIn(userId, state, request.page(), request.size(), request.sort())
+				.map(EnrollmentInfoResponse::from)
+		);
 	}
 }

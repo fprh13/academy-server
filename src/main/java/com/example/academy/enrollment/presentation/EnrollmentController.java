@@ -1,15 +1,21 @@
 package com.example.academy.enrollment.presentation;
 
 import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.ModelAttribute;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.example.academy.common.presentation.dto.ApiResponse;
+import com.example.academy.common.presentation.dto.PagingRequest;
+import com.example.academy.common.presentation.dto.PagingResponse;
 import com.example.academy.enrollment.application.EnrollmentService;
 import com.example.academy.enrollment.presentation.dto.request.ApplyEnrollmentRequest;
+import com.example.academy.enrollment.presentation.dto.response.EnrollmentInfoResponse;
 import com.example.academy.identity.domain.user.User;
 
 import jakarta.validation.Valid;
@@ -43,5 +49,14 @@ public class EnrollmentController {
 	public ResponseEntity<ApiResponse<Void>> refund(@PathVariable Long enrollmentId, User user) {
 		enrollmentService.cancelConfirm(enrollmentId, user.getId());
 		return ResponseEntity.ok(ApiResponse.of());
+	}
+
+	@GetMapping
+	public ResponseEntity<ApiResponse<PagingResponse<EnrollmentInfoResponse>>> getAllEnrollments(
+		@ModelAttribute PagingRequest request,
+		@RequestParam(required = false) String state,
+		User user
+	) {
+		return ResponseEntity.ok().body(ApiResponse.of(enrollmentService.gets(request, state, user.getId())));
 	}
 }

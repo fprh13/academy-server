@@ -2,9 +2,11 @@ package com.example.academy.enrollment.application;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
 
 import java.time.LocalDateTime;
+import java.util.List;
 import java.util.Optional;
 
 import org.junit.jupiter.api.DisplayName;
@@ -16,14 +18,20 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.Mockito;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.test.util.ReflectionTestUtils;
 
 import com.example.academy.common.exception.ForbiddenException;
 import com.example.academy.common.exception.NotFoundException;
+import com.example.academy.common.presentation.dto.PagingRequest;
+import com.example.academy.common.presentation.dto.PagingResponse;
 import com.example.academy.course.domain.Course;
 import com.example.academy.course.domain.CourseRepository;
 import com.example.academy.enrollment.domain.Enrollment;
 import com.example.academy.enrollment.domain.EnrollmentRepository;
+import com.example.academy.enrollment.presentation.dto.response.EnrollmentInfoResponse;
 import com.example.academy.identity.domain.user.User;
 import com.example.academy.identity.domain.user.UserRepository;
 import com.example.academy.support.fixture.CourseFixture;
@@ -360,11 +368,107 @@ class EnrollmentServiceTest {
 		}
 	}
 
+	@Nested
+	@DisplayName("수강 신청 목록 조회")
+	class GetEnrollments {
+		@Test
+		void 페이지_요청_기본값을_적용해_목록을_조회한다() {
+			// given
+			Long userId = 2L;
+			PagingRequest request = new PagingRequest(null, null, null);
+			Page<Enrollment> enrollmentPage = new PageImpl<>(List.of());
+
+			Mockito.when(enrollmentRepository.findPageByUserIdAndStateIn(userId, null, 0, 10, "createAt"))
+				.thenReturn(enrollmentPage);
+
+			// when
+			enrollmentService.gets(request, null, userId);
+
+			// then
+			Mockito.verify(enrollmentRepository, Mockito.times(1))
+				.findPageByUserIdAndStateIn(userId, null, 0, 10, "createAt");
+		}
+
+		@Test
+		void 수강_신청_목록을_페이지_응답으로_변환한다() {
+			// given
+			Long userId = 2L;
+			String state = "confirmed";
+			PagingRequest request = new PagingRequest(1, 10, null);
+
+			User firstCreator = createCreator(11L, UserFixture.USER_FIXTURE_1);
+			User secondCreator = createCreator(12L, UserFixture.USER_FIXTURE_3);
+
+			Course firstCourse = createOpenCourse(101L, firstCreator, CourseFixture.COURSE_FIXTURE_1);
+			Course secondCourse = createOpenCourse(102L, secondCreator, CourseFixture.COURSE_FIXTURE_2);
+
+			LocalDateTime firstCreatedAt = LocalDateTime.of(2026, 6, 2, 10, 0);
+			LocalDateTime secondCreatedAt = LocalDateTime.of(2026, 6, 3, 11, 30);
+
+			Enrollment pendingEnrollment = createPendingEnrollment(1001L, userId, firstCourse, firstCreatedAt);
+			Enrollment confirmedEnrollment = createConfirmedEnrollment(1002L, userId, secondCourse, secondCreatedAt, PAID_AT);
+
+			Page<Enrollment> enrollmentPage = new PageImpl<>(
+				List.of(pendingEnrollment, confirmedEnrollment),
+				PageRequest.of(0, 10),
+				3
+			);
+
+			Mockito.when(enrollmentRepository.findPageByUserIdAndStateIn(userId, state, 0, 10, "createAt"))
+				.thenReturn(enrollmentPage);
+
+			// when
+			PagingResponse<EnrollmentInfoResponse> response = enrollmentService.gets(request, state, userId);
+
+			// then
+			assertThat(response.content()).hasSize(2);
+
+			EnrollmentInfoResponse firstResponse = response.content().get(0);
+			assertAll(
+				() -> assertThat(firstResponse.enrollmentId()).isEqualTo(1001L),
+				() -> assertThat(firstResponse.state()).isEqualTo("PENDING"),
+				() -> assertThat(firstResponse.createAt()).isEqualTo(firstCreatedAt),
+				() -> assertThat(firstResponse.paidAt()).isNull(),
+				() -> assertThat(firstResponse.courseInfo().courseId()).isEqualTo(101L),
+				() -> assertThat(firstResponse.courseInfo().courseName()).isEqualTo(firstCreator.getName()),
+				() -> assertThat(firstResponse.courseInfo().coursePrice()).isEqualTo(firstCourse.getPrice())
+			);
+
+			EnrollmentInfoResponse secondResponse = response.content().get(1);
+			assertAll(
+				() -> assertThat(secondResponse.enrollmentId()).isEqualTo(1002L),
+				() -> assertThat(secondResponse.state()).isEqualTo("CONFIRMED"),
+				() -> assertThat(secondResponse.createAt()).isEqualTo(secondCreatedAt),
+				() -> assertThat(secondResponse.paidAt()).isEqualTo(PAID_AT),
+				() -> assertThat(secondResponse.courseInfo().courseId()).isEqualTo(102L),
+				() -> assertThat(secondResponse.courseInfo().courseName()).isEqualTo(secondCreator.getName()),
+				() -> assertThat(secondResponse.courseInfo().coursePrice()).isEqualTo(secondCourse.getPrice())
+			);
+
+			assertAll(
+				() -> assertThat(response.page().number()).isEqualTo(1),
+				() -> assertThat(response.page().size()).isEqualTo(10),
+				() -> assertThat(response.page().totalElements()).isEqualTo(2),
+				() -> assertThat(response.page().totalPages()).isEqualTo(1),
+				() -> assertThat(response.page().hasNext()).isFalse(),
+				() -> assertThat(response.page().hasPrevious()).isFalse()
+			);
+		}
+	}
+
 	private Enrollment createPendingEnrollment(Long enrollmentId, Long userId) {
 		Course course = createOpenCourse(1L);
 		User user = createUser(userId);
 		Enrollment enrollment = Enrollment.apply(course, user);
 		ReflectionTestUtils.setField(enrollment, "id", enrollmentId);
+		return enrollment;
+	}
+
+	private Enrollment createPendingEnrollment(Long enrollmentId, Long userId, Course course, LocalDateTime createdAt) {
+		User user = createUser(userId);
+		Enrollment enrollment = Enrollment.apply(course, user);
+		ReflectionTestUtils.setField(enrollment, "id", enrollmentId);
+		ReflectionTestUtils.setField(enrollment, "createAt", createdAt);
 		return enrollment;
 	}
 
@@ -374,12 +478,33 @@ class EnrollmentServiceTest {
 		return enrollment;
 	}
 
+	private Enrollment createConfirmedEnrollment(
+		Long enrollmentId,
+		Long userId,
+		Course course,
+		LocalDateTime createdAt,
+		LocalDateTime paidAt
+	) {
+		Enrollment enrollment = createPendingEnrollment(enrollmentId, userId, course, createdAt);
+		enrollment.confirmPayment(paidAt);
+		return enrollment;
+	}
+
 	private Course createOpenCourse(Long courseId) {
-		User creator = UserFixture.USER_FIXTURE_1.createCreator();
-		Course course = CourseFixture.COURSE_FIXTURE_1.create(creator);
+		return createOpenCourse(courseId, createCreator(1L, UserFixture.USER_FIXTURE_1), CourseFixture.COURSE_FIXTURE_1);
+	}
+
+	private Course createOpenCourse(Long courseId, User creator, CourseFixture courseFixture) {
+		Course course = courseFixture.create(creator);
 		course.open();
 		ReflectionTestUtils.setField(course, "id", courseId);
 		return course;
+	}
+
+	private User createCreator(Long creatorId, UserFixture userFixture) {
+		User creator = userFixture.createCreator();
+		ReflectionTestUtils.setField(creator, "id", creatorId);
+		return creator;
 	}
 
 	private User createUser(Long userId) {

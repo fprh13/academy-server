@@ -1,13 +1,17 @@
 package com.example.academy.enrollment.presentation;
 
+import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.springframework.restdocs.request.RequestDocumentation.parameterWithName;
 import static org.springframework.restdocs.payload.PayloadDocumentation.fieldWithPath;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
-import org.junit.jupiter.api.Assertions;
+import java.time.LocalDateTime;
+import java.util.List;
+
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
@@ -26,9 +30,11 @@ import com.example.academy.common.exception.NotFoundException;
 import com.example.academy.common.exception.BadRequestException;
 import com.example.academy.common.presentation.dto.ApiErrorResponse;
 import com.example.academy.common.presentation.dto.ApiResponse;
+import com.example.academy.common.presentation.dto.PagingResponse;
 import com.example.academy.course.domain.Course;
 import com.example.academy.enrollment.domain.Enrollment;
 import com.example.academy.enrollment.presentation.dto.request.ApplyEnrollmentRequest;
+import com.example.academy.enrollment.presentation.dto.response.EnrollmentInfoResponse;
 import com.example.academy.support.RestDocsSupport;
 
 class EnrollmentControllerTest extends RestDocsSupport {
@@ -95,7 +101,8 @@ class EnrollmentControllerTest extends RestDocsSupport {
 			Mockito.verify(enrollmentService, Mockito.never()).apply(anyLong(), anyLong());
 			actions
 				.andExpect(status().isBadRequest())
-				.andExpect(result -> Assertions.assertInstanceOf(MethodArgumentNotValidException.class, result.getResolvedException()))
+				.andExpect(result -> assertInstanceOf(MethodArgumentNotValidException.class,
+					result.getResolvedException()))
 				.andExpect(jsonPath("$.message").value(errorMessage))
 				.andDo(restDocsHandler.document(
 					ResourceDocumentation.resource(ResourceSnippetParameters.builder()
@@ -125,7 +132,8 @@ class EnrollmentControllerTest extends RestDocsSupport {
 			// then
 			actions
 				.andExpect(status().isNotFound())
-				.andExpect(result -> Assertions.assertInstanceOf(NotFoundException.class, result.getResolvedException()))
+				.andExpect(
+					result -> assertInstanceOf(NotFoundException.class, result.getResolvedException()))
 				.andExpect(jsonPath("$.message").value(errorMessage))
 				.andDo(restDocsHandler.document(
 					ResourceDocumentation.resource(ResourceSnippetParameters.builder()
@@ -155,7 +163,8 @@ class EnrollmentControllerTest extends RestDocsSupport {
 			// then
 			actions
 				.andExpect(status().isConflict())
-				.andExpect(result -> Assertions.assertInstanceOf(ConflictException.class, result.getResolvedException()))
+				.andExpect(
+					result -> assertInstanceOf(ConflictException.class, result.getResolvedException()))
 				.andExpect(jsonPath("$.message").value(errorMessage))
 				.andDo(restDocsHandler.document(
 					ResourceDocumentation.resource(ResourceSnippetParameters.builder()
@@ -221,7 +230,8 @@ class EnrollmentControllerTest extends RestDocsSupport {
 			// then
 			actions
 				.andExpect(status().isNotFound())
-				.andExpect(result -> Assertions.assertInstanceOf(NotFoundException.class, result.getResolvedException()))
+				.andExpect(
+					result -> assertInstanceOf(NotFoundException.class, result.getResolvedException()))
 				.andExpect(jsonPath("$.message").value(errorMessage))
 				.andDo(restDocsHandler.document(
 					ResourceDocumentation.resource(ResourceSnippetParameters.builder()
@@ -249,7 +259,8 @@ class EnrollmentControllerTest extends RestDocsSupport {
 			// then
 			actions
 				.andExpect(status().isForbidden())
-				.andExpect(result -> Assertions.assertInstanceOf(ForbiddenException.class, result.getResolvedException()))
+				.andExpect(
+					result -> assertInstanceOf(ForbiddenException.class, result.getResolvedException()))
 				.andExpect(jsonPath("$.message").value(errorMessage))
 				.andDo(restDocsHandler.document(
 					ResourceDocumentation.resource(ResourceSnippetParameters.builder()
@@ -277,7 +288,8 @@ class EnrollmentControllerTest extends RestDocsSupport {
 			// then
 			actions
 				.andExpect(status().isConflict())
-				.andExpect(result -> Assertions.assertInstanceOf(ConflictException.class, result.getResolvedException()))
+				.andExpect(
+					result -> assertInstanceOf(ConflictException.class, result.getResolvedException()))
 				.andExpect(jsonPath("$.message").value(errorMessage))
 				.andDo(restDocsHandler.document(
 					ResourceDocumentation.resource(ResourceSnippetParameters.builder()
@@ -342,7 +354,8 @@ class EnrollmentControllerTest extends RestDocsSupport {
 			// then
 			actions
 				.andExpect(status().isNotFound())
-				.andExpect(result -> Assertions.assertInstanceOf(NotFoundException.class, result.getResolvedException()))
+				.andExpect(
+					result -> assertInstanceOf(NotFoundException.class, result.getResolvedException()))
 				.andExpect(jsonPath("$.message").value(errorMessage))
 				.andDo(restDocsHandler.document(
 					ResourceDocumentation.resource(ResourceSnippetParameters.builder()
@@ -370,7 +383,8 @@ class EnrollmentControllerTest extends RestDocsSupport {
 			// then
 			actions
 				.andExpect(status().isForbidden())
-				.andExpect(result -> Assertions.assertInstanceOf(ForbiddenException.class, result.getResolvedException()))
+				.andExpect(
+					result -> assertInstanceOf(ForbiddenException.class, result.getResolvedException()))
 				.andExpect(jsonPath("$.message").value(errorMessage))
 				.andDo(restDocsHandler.document(
 					ResourceDocumentation.resource(ResourceSnippetParameters.builder()
@@ -435,7 +449,8 @@ class EnrollmentControllerTest extends RestDocsSupport {
 			// then
 			actions
 				.andExpect(status().isNotFound())
-				.andExpect(result -> Assertions.assertInstanceOf(NotFoundException.class, result.getResolvedException()))
+				.andExpect(
+					result -> assertInstanceOf(NotFoundException.class, result.getResolvedException()))
 				.andExpect(jsonPath("$.message").value(errorMessage))
 				.andDo(restDocsHandler.document(
 					ResourceDocumentation.resource(ResourceSnippetParameters.builder()
@@ -463,7 +478,8 @@ class EnrollmentControllerTest extends RestDocsSupport {
 			// then
 			actions
 				.andExpect(status().isForbidden())
-				.andExpect(result -> Assertions.assertInstanceOf(ForbiddenException.class, result.getResolvedException()))
+				.andExpect(
+					result -> assertInstanceOf(ForbiddenException.class, result.getResolvedException()))
 				.andExpect(jsonPath("$.message").value(errorMessage))
 				.andDo(restDocsHandler.document(
 					ResourceDocumentation.resource(ResourceSnippetParameters.builder()
@@ -491,7 +507,8 @@ class EnrollmentControllerTest extends RestDocsSupport {
 			// then
 			actions
 				.andExpect(status().isConflict())
-				.andExpect(result -> Assertions.assertInstanceOf(ConflictException.class, result.getResolvedException()))
+				.andExpect(
+					result -> assertInstanceOf(ConflictException.class, result.getResolvedException()))
 				.andExpect(jsonPath("$.message").value(errorMessage))
 				.andDo(restDocsHandler.document(
 					ResourceDocumentation.resource(ResourceSnippetParameters.builder()
@@ -519,7 +536,8 @@ class EnrollmentControllerTest extends RestDocsSupport {
 			// then
 			actions
 				.andExpect(status().isBadRequest())
-				.andExpect(result -> Assertions.assertInstanceOf(BadRequestException.class, result.getResolvedException()))
+				.andExpect(
+					result -> assertInstanceOf(BadRequestException.class, result.getResolvedException()))
 				.andExpect(jsonPath("$.message").value(errorMessage))
 				.andDo(restDocsHandler.document(
 					ResourceDocumentation.resource(ResourceSnippetParameters.builder()
@@ -528,5 +546,216 @@ class EnrollmentControllerTest extends RestDocsSupport {
 						.build())
 				));
 		}
+	}
+
+	@Nested
+	@DisplayName("수강 신청 목록 조회 API 테스트")
+	class GetEnrollmentsTest {
+		@Test
+		void 수강_신청_목록_조회_2XX() throws Exception {
+			// given
+			PagingResponse<EnrollmentInfoResponse> responseDto = createEnrollmentPagingResponse(
+				List.of(
+					createPaddingEnrollmentInfoResponse(1L),
+					createPaddingEnrollmentInfoResponse(2L),
+					createPaddingEnrollmentInfoResponse(3L),
+					createPaddingEnrollmentInfoResponse(4L),
+					createPaddingEnrollmentInfoResponse(5L),
+					createConFirmedEnrollmentInfoResponse(6L),
+					createConFirmedEnrollmentInfoResponse(7L),
+					createConFirmedEnrollmentInfoResponse(8L),
+					createConFirmedEnrollmentInfoResponse(9L),
+					createConFirmedEnrollmentInfoResponse(10L)
+				)
+			);
+
+			Mockito.when(enrollmentService.gets(Mockito.any(), Mockito.isNull(), Mockito.eq(1L)))
+				.thenReturn(responseDto);
+
+			// when
+			ResultActions actions = mockMvc.perform(
+				get(BASE_URI)
+					.queryParam("page", "1")
+					.queryParam("size", "10")
+					.contentType(MediaType.APPLICATION_JSON));
+
+			// then
+			actions
+				.andExpect(status().isOk())
+				.andExpect(jsonPath("$.message").value(BASE_SUCCESS_MESSAGE))
+				.andExpect(jsonPath("$.data.content[0].enrollmentId").value(1L))
+				.andExpect(jsonPath("$.data.content[0].state").value("PADDING"))
+				.andExpect(jsonPath("$.data.content[0].courseInfo.courseId").value(13L))
+				.andExpect(jsonPath("$.data.page.number").value(1))
+				.andExpect(jsonPath("$.data.page.totalElements").value(15))
+				.andDo(restDocsHandler.document(
+					ResourceDocumentation.resource(ResourceSnippetParameters.builder()
+						.tag(BASE_TAG)
+						.summary("수강 신청 목록 조회")
+						.description("## 수강 신청 목록 조회 기능 \n"
+							+ "### 사용법 \n"
+							+ "- 상태 조건과 페이지 조건으로 본인의 수강 신청 목록을 조회합니다.\n"
+							+ "- state를 생략하면 결제 대기와 결제 확정 목록을 함께 조회합니다.\n"
+							+ "- state가 confirmed면 결제 확정 목록만 조회합니다.\n"
+							+ "- state가 confirmed면 결제 취소 목록만 조회합니다.\n"
+						)
+						.queryParameters(
+							parameterWithName("state").description(
+									"수강 신청 상태 필터입니다. 생략하면 수강 대기와 확정만, confirmed면 확정 목록만, cancel이면 취소 목록만 조회합니다.")
+								.optional(),
+							parameterWithName("page").description("조회할 페이지 번호입니다. 1부터 시작합니다.").optional(),
+							parameterWithName("size").description("페이지 크기입니다. 기본값은 10입니다.").optional()
+						)
+						.responseSchema(Schema.schema(ApiResponse.class.getSimpleName()))
+						.responseFields(
+							fieldWithPath("message").description("성공 응답 메세지입니다.").type(JsonFieldType.STRING),
+							fieldWithPath("data.content[].enrollmentId").description("수강 신청 식별자입니다.").type(JsonFieldType.NUMBER),
+							fieldWithPath("data.content[].state").description("수강 신청 상태입니다.").type(JsonFieldType.STRING),
+							fieldWithPath("data.content[].createAt").description("수강 신청 생성 시각입니다.").type(JsonFieldType.STRING),
+							fieldWithPath("data.content[].paidAt").description("결제 확정 시각입니다.").type(JsonFieldType.STRING),
+							fieldWithPath("data.content[].courseInfo.courseId").description("강의 식별자입니다.").type(JsonFieldType.NUMBER),
+							fieldWithPath("data.content[].courseInfo.courseName").description("강사 이름입니다.").type(JsonFieldType.STRING),
+							fieldWithPath("data.content[].courseInfo.coursePrice").description("강의 가격입니다.").type(JsonFieldType.NUMBER),
+							fieldWithPath("data.page.number").description("현재 페이지 번호입니다.").type(JsonFieldType.NUMBER),
+							fieldWithPath("data.page.size").description("페이지 크기입니다.").type(JsonFieldType.NUMBER),
+							fieldWithPath("data.page.totalElements").description("전체 수강 신청 수입니다.").type(JsonFieldType.NUMBER),
+							fieldWithPath("data.page.totalPages").description("전체 페이지 수입니다.").type(JsonFieldType.NUMBER),
+							fieldWithPath("data.page.hasNext").description("다음 페이지 존재 여부입니다.").type(JsonFieldType.BOOLEAN),
+							fieldWithPath("data.page.hasPrevious").description("이전 페이지 존재 여부입니다.").type(JsonFieldType.BOOLEAN)
+						).build())
+				));
+		}
+
+		@Test
+		void 수강_신청_목록_조회_2XX_확정건_조회() throws Exception {
+			// given
+			PagingResponse<EnrollmentInfoResponse> responseDto = createEnrollmentPagingResponse(
+				List.of(
+					createConFirmedEnrollmentInfoResponse(1L),
+					createConFirmedEnrollmentInfoResponse(2L),
+					createConFirmedEnrollmentInfoResponse(3L),
+					createConFirmedEnrollmentInfoResponse(4L),
+					createConFirmedEnrollmentInfoResponse(5L),
+					createConFirmedEnrollmentInfoResponse(6L),
+					createConFirmedEnrollmentInfoResponse(7L),
+					createConFirmedEnrollmentInfoResponse(8L),
+					createConFirmedEnrollmentInfoResponse(9L),
+					createConFirmedEnrollmentInfoResponse(10L)
+				)
+			);
+
+			Mockito.when(enrollmentService.gets(Mockito.any(), Mockito.anyString(), Mockito.eq(1L)))
+				.thenReturn(responseDto);
+
+			// when
+			ResultActions actions = mockMvc.perform(
+				get(BASE_URI)
+					.queryParam("state", "confirmed")
+					.queryParam("page", "1")
+					.queryParam("size", "10")
+					.contentType(MediaType.APPLICATION_JSON));
+
+			// then
+			actions
+				.andExpect(status().isOk())
+				.andExpect(jsonPath("$.message").value(BASE_SUCCESS_MESSAGE))
+				.andExpect(jsonPath("$.data.content[0].enrollmentId").value(1L))
+				.andExpect(jsonPath("$.data.page.number").value(1))
+				.andDo(restDocsHandler.document(
+					ResourceDocumentation.resource(ResourceSnippetParameters.builder()
+						.tag(BASE_TAG)
+						.responseSchema(Schema.schema(ApiResponse.class.getSimpleName()))
+						.build())
+				));
+		}
+
+		@Test
+		void 수강_신청_목록_조회_2XX_취소건_조회() throws Exception {
+			// given
+			PagingResponse<EnrollmentInfoResponse> responseDto = createEnrollmentPagingResponse(
+				List.of(
+					createCanceledEnrollmentInfoResponse(1L),
+					createCanceledEnrollmentInfoResponse(2L),
+					createCanceledEnrollmentInfoResponse(3L),
+					createCanceledEnrollmentInfoResponse(4L),
+					createCanceledEnrollmentInfoResponse(5L),
+					createCanceledEnrollmentInfoResponse(6L),
+					createCanceledEnrollmentInfoResponse(7L),
+					createCanceledEnrollmentInfoResponse(8L),
+					createCanceledEnrollmentInfoResponse(9L),
+					createCanceledEnrollmentInfoResponse(10L)
+				)
+			);
+
+			Mockito.when(enrollmentService.gets(Mockito.any(), Mockito.anyString(), Mockito.eq(1L)))
+				.thenReturn(responseDto);
+
+			// when
+			ResultActions actions = mockMvc.perform(
+				get(BASE_URI)
+					.queryParam("state", "cancelled")
+					.queryParam("page", "1")
+					.queryParam("size", "10")
+					.contentType(MediaType.APPLICATION_JSON));
+
+			// then
+			actions
+				.andExpect(status().isOk())
+				.andExpect(jsonPath("$.message").value(BASE_SUCCESS_MESSAGE))
+				.andExpect(jsonPath("$.data.content[0].enrollmentId").value(1L))
+				.andExpect(jsonPath("$.data.page.number").value(1))
+				.andDo(restDocsHandler.document(
+					ResourceDocumentation.resource(ResourceSnippetParameters.builder()
+						.tag(BASE_TAG)
+						.responseSchema(Schema.schema(ApiResponse.class.getSimpleName()))
+				.build())
+				));
+		}
+	}
+
+	private PagingResponse<EnrollmentInfoResponse> createEnrollmentPagingResponse(
+		List<EnrollmentInfoResponse> enrollmentInfoResponses
+	) {
+		return new PagingResponse<>(
+			enrollmentInfoResponses,
+			new PagingResponse.PageMetaData(
+				1,
+				10,
+				15L,
+				2,
+				true,
+				false
+			)
+		);
+	}
+
+	private EnrollmentInfoResponse createConFirmedEnrollmentInfoResponse(Long enrollmentId) {
+		return new EnrollmentInfoResponse(
+			enrollmentId,
+			"CONFIRMED",
+			LocalDateTime.of(2026, 6, 2, 10, 0),
+			LocalDateTime.of(2026, 6, 2, 10, 5),
+			new EnrollmentInfoResponse.CourseInfo(11L, "김확정", 110_000)
+		);
+	}
+
+	private EnrollmentInfoResponse createCanceledEnrollmentInfoResponse(Long enrollmentId) {
+		return new EnrollmentInfoResponse(
+			enrollmentId,
+			"CANCELED",
+			LocalDateTime.of(2026, 6, 2, 10, 0),
+			LocalDateTime.of(2026, 6, 2, 10, 5),
+			new EnrollmentInfoResponse.CourseInfo(12L, "이취소", 990_000)
+		);
+	}
+
+	private EnrollmentInfoResponse createPaddingEnrollmentInfoResponse(Long enrollmentId) {
+		return new EnrollmentInfoResponse(
+			enrollmentId,
+			"PADDING",
+			LocalDateTime.of(2026, 6, 2, 10, 0),
+			LocalDateTime.of(2026, 6, 2, 10, 5),
+			new EnrollmentInfoResponse.CourseInfo(13L, "박대기", 190_000)
+		);
 	}
 }
