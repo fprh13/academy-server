@@ -59,5 +59,7 @@ public class EnrollmentService {
 
 		LocalDateTime now = LocalDateTime.now();
 		enrollment.cancelApplication(now);
+
+		enrollmentRepository.deleteById(enrollmentId);
 	}
 }

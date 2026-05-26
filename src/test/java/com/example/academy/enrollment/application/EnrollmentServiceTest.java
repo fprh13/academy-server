@@ -253,6 +253,8 @@ class EnrollmentServiceTest {
 			assertThat(enrollment.isPending()).isTrue();
 			assertThat(enrollment.getCancelledAt()).isNull();
 			assertThat(enrollment.getCourse().getCapacity().getCurrent()).isZero();
+			Mockito.verify(enrollmentRepository, Mockito.times(1))
+				.deleteById(enrollmentId);
 		}
 
 		@Test

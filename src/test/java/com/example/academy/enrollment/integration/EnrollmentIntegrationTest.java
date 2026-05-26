@@ -202,14 +202,11 @@ class EnrollmentIntegrationTest extends IntegrationSupportTest {
 			enrollmentService.cancel(enrollmentId, user.getId());
 
 			// then
-			Enrollment enrollment = enrollmentRepository.findById(enrollmentId)
-				.orElseThrow(() -> new AssertionError("수강 신청이 저장되지 않았습니다."));
 			Course savedCourse = courseRepository.findById(course.getId())
 				.orElseThrow(() -> new AssertionError("강의가 저장되지 않았습니다."));
 
 			assertAll(
-				() -> assertThat(enrollment.getState()).isEqualTo(EnrollmentState.PENDING),
-				() -> assertThat(enrollment.getCancelledAt()).isNull(),
+				() -> assertThat(enrollmentRepository.findById(enrollmentId)).isEmpty(),
 				() -> assertThat(savedCourse.getCapacity().getCurrent()).isZero()
 			);
 		}
