@@ -19,6 +19,7 @@ import lombok.RequiredArgsConstructor;
 public class EnrollmentRepositoryImpl implements EnrollmentRepository {
 	private static final String STATE_CANCEL = "cancelled";
 	private static final String STATE_CONFIRM = "confirmed";
+	private static final String SORT_CLASSMATE = "user.name";
 
 	private final JpaEnrollmentRepository jpaEnrollmentRepository;
 
@@ -57,5 +58,14 @@ public class EnrollmentRepositoryImpl implements EnrollmentRepository {
 		}
 
 		return List.of(EnrollmentState.PENDING, EnrollmentState.CONFIRMED);
+	}
+
+	@Override
+	public Page<Enrollment> findPageByCourseIdAndState(Long courseId, int page, int size) {
+		return jpaEnrollmentRepository.findPageByCourseIdAndState(
+			courseId,
+			EnrollmentState.CONFIRMED,
+			PageRequest.of(page, size, Sort.by(SORT_CLASSMATE))
+		);
 	}
 }

@@ -9,4 +9,5 @@ public interface EnrollmentRepository {
 	Optional<Enrollment> findById(Long enrollmentId);
 	void deleteById(Long enrollmentId);
 	Page<Enrollment> findPageByUserIdAndStateIn(Long userId, String state, int page, int size, String sort);
+	Page<Enrollment> findPageByCourseIdAndState(Long courseId, int page, int size);
 }
