@@ -24,7 +24,7 @@ public class DomainEntity {
 
 	@CreatedDate
 	@Column(updatable = false)
-	private LocalDateTime createDate;
+	private LocalDateTime createAt;
 
 	@Override
 	public boolean equals(Object o) {
