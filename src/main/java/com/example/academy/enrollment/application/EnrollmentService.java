@@ -62,4 +62,18 @@ public class EnrollmentService {
 
 		enrollmentRepository.deleteById(enrollmentId);
 	}
+
+
+	@Transactional
+	public void cancelConfirm(Long enrollmentId, Long userId) {
+		Enrollment enrollment = enrollmentRepository.findById(enrollmentId)
+			.orElseThrow(() -> new NotFoundException(Enrollment.class));
+
+		if (!enrollment.canWrite(userId)) {
+			throw new ForbiddenException();
+		}
+
+		LocalDateTime now = LocalDateTime.now();
+		enrollment.cancelConfirmed(now);
+	}
 }

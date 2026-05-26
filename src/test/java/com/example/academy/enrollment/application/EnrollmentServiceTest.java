@@ -31,6 +31,7 @@ import com.example.academy.support.fixture.UserFixture;
 
 @ExtendWith(MockitoExtension.class)
 class EnrollmentServiceTest {
+	private static final LocalDateTime PAID_AT = LocalDateTime.of(2026, 6, 1, 10, 0);
 
 	@InjectMocks
 	private EnrollmentService enrollmentService;
@@ -288,11 +289,88 @@ class EnrollmentServiceTest {
 		}
 	}
 
+	@Nested
+	@DisplayName("수강 확정 취소")
+	class CancelConfirmedEnrollment {
+		@Test
+		void 본인의_결제_확정_상태_수강_신청을_취소한다() {
+			// given
+			Long enrollmentId = 10L;
+			Long userId = 2L;
+			Enrollment enrollment = createConfirmedEnrollment(enrollmentId, userId, PAID_AT);
+
+			Mockito.when(enrollmentRepository.findById(enrollmentId))
+				.thenReturn(Optional.of(enrollment));
+
+			// when
+			enrollmentService.cancelConfirm(enrollmentId, userId);
+
+			// then
+			assertThat(enrollment.isCancelled()).isTrue();
+			assertThat(enrollment.getCancelledAt()).isNotNull();
+			assertThat(enrollment.getCourse().getCapacity().getCurrent()).isZero();
+		}
+
+		@Test
+		void 수강_확정_취소_대상의_수강_신청을_조회한다() {
+			// given
+			Long enrollmentId = 10L;
+			Long userId = 2L;
+			Enrollment enrollment = createConfirmedEnrollment(enrollmentId, userId, PAID_AT);
+
+			Mockito.when(enrollmentRepository.findById(enrollmentId))
+				.thenReturn(Optional.of(enrollment));
+
+			// when
+			enrollmentService.cancelConfirm(enrollmentId, userId);
+
+			// then
+			Mockito.verify(enrollmentRepository, Mockito.times(1))
+				.findById(enrollmentId);
+		}
+
+		@Test
+		void 본인의_수강_신청이_아니면_수강_확정을_취소할_수_없다() {
+			// given
+			Long enrollmentId = 10L;
+			Long userId = 2L;
+			Long otherUserId = 3L;
+			Enrollment enrollment = createConfirmedEnrollment(enrollmentId, userId, PAID_AT);
+
+			Mockito.when(enrollmentRepository.findById(enrollmentId))
+				.thenReturn(Optional.of(enrollment));
+
+			// when & then
+			assertThatThrownBy(() -> enrollmentService.cancelConfirm(enrollmentId, otherUserId))
+				.isInstanceOf(ForbiddenException.class);
+		}
+
+		@Test
+		void 수강_신청이_없으면_수강_확정을_취소할_수_없다() {
+			// given
+			Long enrollmentId = 10L;
+			Long userId = 2L;
+
+			Mockito.when(enrollmentRepository.findById(enrollmentId))
+				.thenReturn(Optional.empty());
+
+			// when & then
+			assertThatThrownBy(() -> enrollmentService.cancelConfirm(enrollmentId, userId))
+				.isInstanceOf(NotFoundException.class);
+		}
+	}
+
 	private Enrollment createPendingEnrollment(Long enrollmentId, Long userId) {
 		Course course = createOpenCourse(1L);
 		User user = createUser(userId);
 		Enrollment enrollment = Enrollment.apply(course, user);
 		ReflectionTestUtils.setField(enrollment, "id", enrollmentId);
+		return enrollment;
+	}
+
+	private Enrollment createConfirmedEnrollment(Long enrollmentId, Long userId, LocalDateTime paidAt) {
+		Enrollment enrollment = createPendingEnrollment(enrollmentId, userId);
+		enrollment.confirmPayment(paidAt);
 		return enrollment;
 	}
 
