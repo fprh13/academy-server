@@ -26,7 +26,7 @@ public class AggregateRoot<T extends AbstractAggregateRoot<T>> extends AbstractA
 
 	@CreatedDate
 	@Column(updatable = false)
-	private LocalDateTime createDate;
+	private LocalDateTime createAt;
 
     @Override
     public boolean equals(Object o) {

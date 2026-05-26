@@ -7,7 +7,7 @@ public record PagingRequest(
 ) {
 	private static final int DEFAULT_SIZE = 10;
 	private static final int MAX_SIZE = 100;
-	private static final String DEFAULT_SORT = "createDate";
+	private static final String DEFAULT_SORT = "createAt";
 
 	public Integer page() {
 		return (page == null || page <= 0) ? 0 : page - 1;
