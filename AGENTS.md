@@ -13,6 +13,7 @@
 1. `docs/architecture.md`
 2. `docs/code-style.md`
 3. `docs/requirements.md`
+4. `docs/test-guide.md`
 
 ---
 
