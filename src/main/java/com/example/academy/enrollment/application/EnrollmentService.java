@@ -1,8 +1,12 @@
 package com.example.academy.enrollment.application;
 
+import java.time.LocalDateTime;
+import java.util.Date;
+
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import com.example.academy.common.exception.ForbiddenException;
 import com.example.academy.common.exception.NotFoundException;
 import com.example.academy.course.domain.Course;
 import com.example.academy.course.domain.CourseRepository;
@@ -30,5 +34,18 @@ public class EnrollmentService {
 			.orElseThrow(() -> new NotFoundException(User.class));
 
 		return enrollmentRepository.save(Enrollment.apply(course, user)).getId();
+	}
+
+	@Transactional
+	public void confirm(Long enrollmentId,  Long userId) {
+		Enrollment enrollment = enrollmentRepository.findById(enrollmentId)
+			.orElseThrow(() -> new NotFoundException(Enrollment.class));
+
+		if (!enrollment.canWrite(userId)) {
+			throw new ForbiddenException();
+		}
+
+		LocalDateTime now = LocalDateTime.now();
+		enrollment.confirmPayment(now);
 	}
 }

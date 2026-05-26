@@ -12,6 +12,7 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 
 import com.example.academy.common.exception.ConflictException;
+import com.example.academy.common.exception.ForbiddenException;
 import com.example.academy.common.exception.NotFoundException;
 import com.example.academy.course.domain.Capacity;
 import com.example.academy.course.domain.Course;
@@ -112,6 +113,74 @@ class EnrollmentIntegrationTest extends IntegrationSupportTest {
 
 			// when & then
 			assertThatThrownBy(() -> enrollmentService.apply(course.getId(), secondUser.getId()))
+				.isInstanceOf(ConflictException.class);
+		}
+	}
+
+	@Nested
+	@DisplayName("수강 확정 기능")
+	class ConfirmEnrollmentTest {
+		@Test
+		void 본인의_결제_대기_상태_수강_신청을_확정한다() {
+			// given
+			User creator = userRepository.save(UserFixture.USER_FIXTURE_1.createCreator());
+			Course course = createSavedOpenCourse(creator);
+
+			User user = userRepository.save(UserFixture.USER_FIXTURE_2.create());
+			Long enrollmentId = enrollmentService.apply(course.getId(), user.getId());
+
+			// when
+			enrollmentService.confirm(enrollmentId, user.getId());
+
+			// then
+			Enrollment enrollment = enrollmentRepository.findById(enrollmentId)
+				.orElseThrow(() -> new AssertionError("수강 신청이 저장되지 않았습니다."));
+
+			assertAll(
+				() -> assertThat(enrollment.getState()).isEqualTo(EnrollmentState.CONFIRMED),
+				() -> assertThat(enrollment.getPaidAt()).isNotNull()
+			);
+		}
+
+		@Test
+		void 본인의_수강_신청이_아니라면_예외를_반환한다() {
+			// given
+			User creator = userRepository.save(UserFixture.USER_FIXTURE_1.createCreator());
+			Course course = createSavedOpenCourse(creator);
+
+			User user = userRepository.save(UserFixture.USER_FIXTURE_2.create());
+			User otherUser = userRepository.save(UserFixture.USER_FIXTURE_3.create());
+
+			Long enrollmentId = enrollmentRepository.save(Enrollment.apply(course, user)).getId();
+
+			// when & then
+			assertThatThrownBy(() -> enrollmentService.confirm(enrollmentId, otherUser.getId()))
+				.isInstanceOf(ForbiddenException.class);
+		}
+
+		@Test
+		void 수강_신청이_없다면_예외를_반환한다() {
+			// given
+			User user = userRepository.save(UserFixture.USER_FIXTURE_2.create());
+
+			// when & then
+			assertThatThrownBy(() -> enrollmentService.confirm(999L, user.getId()))
+				.isInstanceOf(NotFoundException.class);
+		}
+
+		@Test
+		void 이미_결제_확정된_수강_신청은_다시_확정할_수_없다() {
+			// given
+			User creator = userRepository.save(UserFixture.USER_FIXTURE_1.createCreator());
+			Course course = createSavedOpenCourse(creator);
+
+			User user = userRepository.save(UserFixture.USER_FIXTURE_2.create());
+			Long enrollmentId = enrollmentRepository.save(Enrollment.apply(course, user)).getId();
+
+			enrollmentService.confirm(enrollmentId, user.getId());
+
+			// when & then
+			assertThatThrownBy(() -> enrollmentService.confirm(enrollmentId, user.getId()))
 				.isInstanceOf(ConflictException.class);
 		}
 	}
