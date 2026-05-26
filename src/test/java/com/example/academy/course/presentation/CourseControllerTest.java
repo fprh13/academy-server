@@ -29,9 +29,12 @@ import com.example.academy.common.presentation.dto.ApiResponse;
 import com.example.academy.common.presentation.dto.PagingResponse;
 import com.example.academy.course.domain.Course;
 import com.example.academy.course.presentation.dto.request.RegisterCourseRequest;
+import com.example.academy.course.presentation.dto.response.CourseClassmateInfoResponse;
 import com.example.academy.course.presentation.dto.response.CourseDetailResponse;
 import com.example.academy.course.presentation.dto.response.CourseSummaryResponse;
+import com.example.academy.identity.domain.user.User;
 import com.example.academy.support.RestDocsSupport;
+import com.example.academy.support.fixture.UserFixture;
 
 class CourseControllerTest extends RestDocsSupport {
 
@@ -320,6 +323,127 @@ class CourseControllerTest extends RestDocsSupport {
 		}
 	}
 
+	@Nested
+	@DisplayName("강의 수강생 목록 조회 API 테스트")
+	class GetCourseClassmatesTest {
+		@Test
+		void 강의_수강생_목록_조회_2XX() throws Exception {
+			//given
+			Long courseId = 1L;
+			PagingResponse<CourseClassmateInfoResponse> responseDto = createCourseClassmatePagingResponse();
+
+			Mockito.when(courseService.getCourseClassmates(eq(courseId), anyLong(), any()))
+				.thenReturn(responseDto);
+
+			//when
+			ResultActions actions = mockMvc.perform(
+				get(BASE_URI + "/{courseId}/classmates", courseId)
+					.queryParam("page", "1")
+					.queryParam("size", "10")
+					.contentType(MediaType.APPLICATION_JSON));
+
+			//then
+			actions
+				.andExpect(status().isOk())
+				.andExpect(jsonPath("$.message").value(BASE_SUCCESS_MESSAGE))
+				.andExpect(jsonPath("$.data.content[0].userId").value(2L))
+				.andExpect(jsonPath("$.data.content[1].userId").value(3L))
+				.andExpect(jsonPath("$.data.page.number").value(1))
+				.andExpect(jsonPath("$.data.page.totalElements").value(2))
+				.andDo(restDocsHandler.document(
+					ResourceDocumentation.resource(ResourceSnippetParameters.builder()
+						.tag(BASE_TAG)
+						.summary("강의 수강생 목록 조회")
+						.description("## 강사의 강의 수강생 목록 조회 기능 \n"
+							+ "### 사용법 \n"
+							+ "- 본인이 개설한 강의의 결제 확정 수강생만 조회할 수 있습니다.\n"
+							+ "- 페이지 조건으로 결과를 조회합니다.\n"
+						)
+						.pathParameters(
+							parameterWithName("courseId").description("조회할 강의의 PK입니다.")
+						)
+						.queryParameters(
+							parameterWithName("page").description("조회할 페이지 번호입니다. 1부터 시작합니다.").optional(),
+							parameterWithName("size").description("페이지 크기입니다. 기본값은 10입니다.").optional()
+						)
+						.responseSchema(Schema.schema(ApiResponse.class.getSimpleName()))
+						.responseFields(
+							fieldWithPath("message").description("성공 응답 메세지입니다.").type(JsonFieldType.STRING),
+							fieldWithPath("data.content[].userId").description("수강생 식별자입니다.").type(JsonFieldType.NUMBER),
+							fieldWithPath("data.content[].name").description("수강생 이름입니다.").type(JsonFieldType.STRING),
+							fieldWithPath("data.content[].email").description("수강생 이메일입니다.").type(JsonFieldType.STRING),
+							fieldWithPath("data.page.number").description("현재 페이지 번호입니다.").type(JsonFieldType.NUMBER),
+							fieldWithPath("data.page.size").description("페이지 크기입니다.").type(JsonFieldType.NUMBER),
+							fieldWithPath("data.page.totalElements").description("전체 수강생 수입니다.").type(JsonFieldType.NUMBER),
+							fieldWithPath("data.page.totalPages").description("전체 페이지 수입니다.").type(JsonFieldType.NUMBER),
+							fieldWithPath("data.page.hasNext").description("다음 페이지 존재 여부입니다.").type(JsonFieldType.BOOLEAN),
+							fieldWithPath("data.page.hasPrevious").description("이전 페이지 존재 여부입니다.").type(JsonFieldType.BOOLEAN)
+						)
+						.build())
+				));
+		}
+
+		@Test
+		void 강의_수강생_목록_조회_4XX_강의_없음() throws Exception {
+			//given
+			Long courseId = 999L;
+			String errorMessage = Course.class.getSimpleName() + "을(를) 찾을 수 없습니다.";
+
+			Mockito.doThrow(new NotFoundException(Course.class))
+				.when(courseService)
+				.getCourseClassmates(eq(courseId), anyLong(), any());
+
+			//when
+			ResultActions actions = mockMvc.perform(
+				get(BASE_URI + "/{courseId}/classmates", courseId)
+					.queryParam("page", "1")
+					.queryParam("size", "10")
+					.contentType(MediaType.APPLICATION_JSON));
+
+			//then
+			actions
+				.andExpect(status().isNotFound())
+				.andExpect(result -> Assertions.assertInstanceOf(NotFoundException.class, result.getResolvedException()))
+				.andExpect(jsonPath("$.message").value(errorMessage))
+				.andDo(restDocsHandler.document(
+					ResourceDocumentation.resource(ResourceSnippetParameters.builder()
+						.tag(BASE_TAG)
+						.responseSchema(Schema.schema(ApiErrorResponse.class.getSimpleName()))
+						.build())
+				));
+		}
+
+		@Test
+		void 강의_수강생_목록_조회_4XX_본인_강의가_아님() throws Exception {
+			//given
+			Long courseId = 1L;
+			String errorMessage = "접근 권한이 없습니다.";
+
+			Mockito.doThrow(new ForbiddenException())
+				.when(courseService)
+				.getCourseClassmates(eq(courseId), anyLong(), any());
+
+			//when
+			ResultActions actions = mockMvc.perform(
+				get(BASE_URI + "/{courseId}/classmates", courseId)
+					.queryParam("page", "1")
+					.queryParam("size", "10")
+					.contentType(MediaType.APPLICATION_JSON));
+
+			//then
+			actions
+				.andExpect(status().isForbidden())
+				.andExpect(result -> Assertions.assertInstanceOf(ForbiddenException.class, result.getResolvedException()))
+				.andExpect(jsonPath("$.message").value(errorMessage))
+				.andDo(restDocsHandler.document(
+					ResourceDocumentation.resource(ResourceSnippetParameters.builder()
+						.tag(BASE_TAG)
+						.responseSchema(Schema.schema(ApiErrorResponse.class.getSimpleName()))
+						.build())
+				));
+		}
+	}
+
 	private CourseDetailResponse createCourseDetailResponse(Long courseId) {
 		return new CourseDetailResponse(
 			courseId,
@@ -358,6 +482,25 @@ class CourseControllerTest extends RestDocsSupport {
 				15L,
 				2,
 				true,
+				false
+			)
+		);
+	}
+
+	private PagingResponse<CourseClassmateInfoResponse> createCourseClassmatePagingResponse() {
+		User firstUser = UserFixture.USER_FIXTURE_1.create();
+		User secondUser = UserFixture.USER_FIXTURE_2.create();
+		return new PagingResponse<>(
+			List.of(
+				new CourseClassmateInfoResponse(2L, firstUser.getName(), firstUser.getEmail()),
+				new CourseClassmateInfoResponse(3L, secondUser.getName(), secondUser.getEmail())
+			),
+			new PagingResponse.PageMetaData(
+				1,
+				10,
+				2L,
+				1,
+				false,
 				false
 			)
 		);

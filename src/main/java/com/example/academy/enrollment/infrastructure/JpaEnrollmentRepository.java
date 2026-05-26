@@ -19,4 +19,11 @@ public interface JpaEnrollmentRepository extends JpaRepository<Enrollment, Long>
 		@Param("states") List<EnrollmentState> states,
 		Pageable pageable
 	);
+
+	@Query("SELECT e FROM Enrollment e JOIN FETCH e.user u WHERE e.course.id = :courseId AND e.state = :state")
+	Page<Enrollment> findPageByCourseIdAndState(
+		@Param("courseId") Long courseId,
+		@Param("state") EnrollmentState state,
+		Pageable pageable
+	);
 }

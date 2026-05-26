@@ -1,13 +1,14 @@
 package com.example.academy.course.application;
 
 import static org.assertj.core.api.Assertions.*;
+import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.*;
 
+import java.time.LocalDateTime;
 import java.time.LocalDate;
 import java.util.List;
 import java.util.Optional;
 
-import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
@@ -28,8 +29,11 @@ import com.example.academy.common.presentation.dto.PagingResponse;
 import com.example.academy.course.domain.Course;
 import com.example.academy.course.domain.CourseRepository;
 import com.example.academy.course.presentation.dto.request.RegisterCourseRequest;
+import com.example.academy.course.presentation.dto.response.CourseClassmateInfoResponse;
 import com.example.academy.course.presentation.dto.response.CourseDetailResponse;
 import com.example.academy.course.presentation.dto.response.CourseSummaryResponse;
+import com.example.academy.enrollment.domain.Enrollment;
+import com.example.academy.enrollment.domain.EnrollmentRepository;
 import com.example.academy.identity.domain.user.User;
 import com.example.academy.identity.domain.user.UserRepository;
 import com.example.academy.support.fixture.CourseFixture;
@@ -46,6 +50,9 @@ class CourseServiceTest {
 
 	@Mock
 	private UserRepository userRepository;
+
+	@Mock
+	private EnrollmentRepository enrollmentRepository;
 
 	@Nested
 	@DisplayName("강의 생성 기능")
@@ -177,7 +184,7 @@ class CourseServiceTest {
 			CourseDetailResponse response = courseService.getCourseDetail(courseId);
 
 			//then
-			Assertions.assertAll(
+			assertAll(
 				() -> assertThat(response.courseId()).isEqualTo(course.getId()),
 				() -> assertThat(response.title()).isEqualTo(course.getTitle()),
 				() -> assertThat(response.description()).isEqualTo(course.getDescription()),
@@ -254,7 +261,7 @@ class CourseServiceTest {
 			PagingResponse<CourseSummaryResponse> response = courseService.getCourses(state, request);
 
 			//then
-			Assertions.assertAll(
+			assertAll(
 				() -> assertThat(response.content()).hasSize(2),
 				() -> assertThat(response.content().get(0).courseId()).isEqualTo(firstCourse.getId()),
 				() -> assertThat(response.content().get(0).creatorName()).isEqualTo(creator.getName()),
@@ -266,6 +273,132 @@ class CourseServiceTest {
 				() -> assertThat(response.page().hasNext()).isTrue(),
 				() -> assertThat(response.page().hasPrevious()).isFalse()
 			);
+		}
+	}
+
+	@Nested
+	@DisplayName("강의 수강생 목록 조회 기능")
+	class GetCourseClassmatesTest {
+		@Test
+		void 강의를_조회한다() {
+			//given
+			User creator = createCreator();
+			Course course = createOpenCourseWithoutEnrollment(creator, 10L);
+			PagingRequest request = new PagingRequest(1, 10, null);
+
+			Mockito.when(courseRepository.findById(course.getId()))
+				.thenReturn(Optional.of(course));
+			Mockito.when(enrollmentRepository.findPageByCourseIdAndState(course.getId(), 0, 10))
+				.thenReturn(Page.empty());
+
+			//when
+			courseService.getCourseClassmates(course.getId(), creator.getId(), request);
+
+			//then
+			Mockito.verify(courseRepository, Mockito.times(1))
+				.findById(course.getId());
+		}
+
+		@Test
+		void 수강생_목록을_조회한다() {
+			//given
+			User creator = createCreator();
+			Course course = createOpenCourseWithoutEnrollment(creator, 10L);
+			PagingRequest request = new PagingRequest(1, 10, null);
+
+			Mockito.when(courseRepository.findById(course.getId()))
+				.thenReturn(Optional.of(course));
+			Mockito.when(enrollmentRepository.findPageByCourseIdAndState(course.getId(), 0, 10))
+				.thenReturn(Page.empty());
+
+			//when
+			courseService.getCourseClassmates(course.getId(), creator.getId(), request);
+
+			//then
+			Mockito.verify(enrollmentRepository, Mockito.times(1))
+				.findPageByCourseIdAndState(course.getId(), 0, 10);
+		}
+
+		@Test
+		void 수강생_목록_페이지응답을_반환한다() {
+			//given
+			User creator = createCreator();
+			Course course = createOpenCourseWithoutEnrollment(creator, 10L);
+			PagingRequest request = new PagingRequest(1, 10, null);
+
+			Page<Enrollment> enrollmentPage = new PageImpl<>(
+				List.of(
+					createConfirmedEnrollment(course, createUser(UserFixture.USER_FIXTURE_2, 1L)),
+					createConfirmedEnrollment(course, createUser(UserFixture.USER_FIXTURE_2, 2L)),
+					createConfirmedEnrollment(course, createUser(UserFixture.USER_FIXTURE_2, 3L)),
+					createConfirmedEnrollment(course, createUser(UserFixture.USER_FIXTURE_2, 4L)),
+					createConfirmedEnrollment(course, createUser(UserFixture.USER_FIXTURE_2, 5L)),
+					createConfirmedEnrollment(course, createUser(UserFixture.USER_FIXTURE_2, 6L)),
+					createConfirmedEnrollment(course, createUser(UserFixture.USER_FIXTURE_2, 7L)),
+					createConfirmedEnrollment(course, createUser(UserFixture.USER_FIXTURE_2, 8L)),
+					createConfirmedEnrollment(course, createUser(UserFixture.USER_FIXTURE_2, 9L)),
+					createConfirmedEnrollment(course, createUser(UserFixture.USER_FIXTURE_2, 10L))
+				),
+				PageRequest.of(0, 10), 10
+			);
+
+			Mockito.when(courseRepository.findById(course.getId()))
+				.thenReturn(Optional.of(course));
+			Mockito.when(enrollmentRepository.findPageByCourseIdAndState(course.getId(), 0, 10))
+				.thenReturn(enrollmentPage);
+
+			//when
+			PagingResponse<CourseClassmateInfoResponse> response = courseService.getCourseClassmates(
+				course.getId(),
+				creator.getId(),
+				request
+			);
+
+			//then
+			assertAll(
+				() -> assertThat(response.content()).hasSize(10),
+				() -> assertThat(response.page().number()).isEqualTo(1),
+				() -> assertThat(response.page().size()).isEqualTo(10),
+				() -> assertThat(response.page().totalElements()).isEqualTo(10),
+				() -> assertThat(response.page().totalPages()).isEqualTo(1),
+				() -> assertThat(response.page().hasNext()).isFalse(),
+				() -> assertThat(response.page().hasPrevious()).isFalse()
+			);
+		}
+
+		@Test
+		void 강의가_없다면_예외를_반환한다() {
+			//given
+			Long courseId = 999L;
+			Long creatorId = 1L;
+			PagingRequest request = new PagingRequest(1, 10, null);
+
+			Mockito.when(courseRepository.findById(courseId))
+				.thenReturn(Optional.empty());
+
+			//when & then
+			assertThatThrownBy(() -> courseService.getCourseClassmates(courseId, creatorId, request))
+				.isInstanceOf(NotFoundException.class);
+			Mockito.verify(enrollmentRepository, Mockito.never())
+				.findPageByCourseIdAndState(anyLong(), anyInt(), anyInt());
+		}
+
+		@Test
+		void 본인_강의가_아니면_예외를_반환한다() {
+			//given
+			User creator = createCreator();
+			Course course = createOpenCourseWithoutEnrollment(creator, 10L);
+			Long otherCreatorId = 2L;
+			PagingRequest request = new PagingRequest(1, 10, null);
+
+			Mockito.when(courseRepository.findById(course.getId()))
+				.thenReturn(Optional.of(course));
+
+			//when & then
+			assertThatThrownBy(() -> courseService.getCourseClassmates(course.getId(), otherCreatorId, request))
+				.isInstanceOf(ForbiddenException.class);
+			Mockito.verify(enrollmentRepository, Mockito.never())
+				.findPageByCourseIdAndState(anyLong(), anyInt(), anyInt());
 		}
 	}
 
@@ -288,6 +421,25 @@ class CourseServiceTest {
 		ReflectionTestUtils.setField(course, "id", 20L);
 		course.open();
 		return course;
+	}
+
+	private Course createOpenCourseWithoutEnrollment(User creator, Long courseId) {
+		Course course = CourseFixture.COURSE_FIXTURE_1.create(creator);
+		ReflectionTestUtils.setField(course, "id", courseId);
+		course.open();
+		return course;
+	}
+
+	private User createUser(UserFixture userFixture, Long userId) {
+		User user = userFixture.create();
+		ReflectionTestUtils.setField(user, "id", userId);
+		return user;
+	}
+
+	private Enrollment createConfirmedEnrollment(Course course, User classmate) {
+		Enrollment enrollment = Enrollment.apply(course, classmate);
+		enrollment.confirmPayment(LocalDateTime.of(2026, 6, 1, 10, 0));
+		return enrollment;
 	}
 
 	private RegisterCourseRequest createRequest() {

@@ -96,12 +96,7 @@ public class Enrollment extends AggregateRoot<Enrollment> implements AccessPolic
 	}
 
 	@Override
-	public boolean canRead(Long userId) {
-		return this.user.getId().equals(userId);
-	}
-
-	@Override
-	public boolean canWrite(Long userId) {
+	public boolean canAccess(Long userId) {
 		return this.user.getId().equals(userId);
 	}
 }

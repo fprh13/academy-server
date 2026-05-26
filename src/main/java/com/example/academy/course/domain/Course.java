@@ -138,12 +138,7 @@ public class Course extends AggregateRoot<Course> implements AccessPolicy {
 	}
 
 	@Override
-	public boolean canRead(Long userId) {
-		return true;
-	}
-
-	@Override
-	public boolean canWrite(Long userId) {
+	public boolean canAccess(Long userId) {
 		return creator.getId().equals(userId);
 	}
 }

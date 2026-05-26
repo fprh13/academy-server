@@ -43,7 +43,7 @@ public class EnrollmentService {
 		Enrollment enrollment = enrollmentRepository.findById(enrollmentId)
 			.orElseThrow(() -> new NotFoundException(Enrollment.class));
 
-		if (!enrollment.canWrite(userId)) {
+		if (!enrollment.canAccess(userId)) {
 			throw new ForbiddenException();
 		}
 
@@ -56,7 +56,7 @@ public class EnrollmentService {
 		Enrollment enrollment = enrollmentRepository.findById(enrollmentId)
 			.orElseThrow(() -> new NotFoundException(Enrollment.class));
 
-		if (!enrollment.canWrite(userId)) {
+		if (!enrollment.canAccess(userId)) {
 			throw new ForbiddenException();
 		}
 
@@ -72,7 +72,7 @@ public class EnrollmentService {
 		Enrollment enrollment = enrollmentRepository.findById(enrollmentId)
 			.orElseThrow(() -> new NotFoundException(Enrollment.class));
 
-		if (!enrollment.canWrite(userId)) {
+		if (!enrollment.canAccess(userId)) {
 			throw new ForbiddenException();
 		}
 
