@@ -55,7 +55,7 @@ public class CourseService {
 		Course course = courseRepository.findById(courseId)
 			.orElseThrow(() -> new NotFoundException(Course.class));
 
-		if (!course.canWrite(creatorId)) {
+		if (!course.canAccess(creatorId)) {
 			throw new ForbiddenException();
 		}
 
