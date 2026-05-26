@@ -5,6 +5,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.junit.jupiter.api.Assertions.assertAll;
 
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
@@ -14,6 +15,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import com.example.academy.common.exception.ConflictException;
 import com.example.academy.common.exception.ForbiddenException;
 import com.example.academy.common.exception.NotFoundException;
+import com.example.academy.common.exception.BadRequestException;
 import com.example.academy.course.domain.Capacity;
 import com.example.academy.course.domain.Course;
 import com.example.academy.course.domain.CourseRepository;
@@ -183,6 +185,146 @@ class EnrollmentIntegrationTest extends IntegrationSupportTest {
 			assertThatThrownBy(() -> enrollmentService.confirm(enrollmentId, user.getId()))
 				.isInstanceOf(ConflictException.class);
 		}
+	}
+
+	@Nested
+	@DisplayName("수강 취소 기능")
+	class CancelEnrollmentTest {
+		@Test
+		void 본인의_결제_대기_상태_수강_신청을_취소한다() {
+			// given
+			User creator = userRepository.save(UserFixture.USER_FIXTURE_1.createCreator());
+			Course course = createSavedOpenCourse(creator);
+
+			User user = userRepository.save(UserFixture.USER_FIXTURE_2.create());
+			Long enrollmentId = enrollmentService.apply(course.getId(), user.getId());
+
+			// when
+			enrollmentService.cancel(enrollmentId, user.getId());
+
+			// then
+			Course savedCourse = courseRepository.findById(course.getId())
+				.orElseThrow(() -> new AssertionError("강의가 저장되지 않았습니다."));
+
+			assertAll(
+				() -> assertThat(enrollmentRepository.findById(enrollmentId)).isEmpty(),
+				() -> assertThat(savedCourse.getCapacity().getCurrent()).isZero()
+			);
+		}
+
+		@Test
+		void 본인의_수강_신청이_아니라면_예외를_반환한다() {
+			// given
+			User creator = userRepository.save(UserFixture.USER_FIXTURE_1.createCreator());
+			Course course = createSavedOpenCourse(creator);
+
+			User user = userRepository.save(UserFixture.USER_FIXTURE_2.create());
+			Long enrollmentId = enrollmentService.apply(course.getId(), user.getId());
+
+			User otherUser = userRepository.save(UserFixture.USER_FIXTURE_3.create());
+
+			// when & then
+			assertThatThrownBy(() -> enrollmentService.cancel(enrollmentId, otherUser.getId()))
+				.isInstanceOf(ForbiddenException.class);
+		}
+
+		@Test
+		void 수강_신청이_없다면_예외를_반환한다() {
+			// given
+			User user = userRepository.save(UserFixture.USER_FIXTURE_2.create());
+
+			// when & then
+			assertThatThrownBy(() -> enrollmentService.cancel(999L, user.getId()))
+				.isInstanceOf(NotFoundException.class);
+		}
+	}
+
+	@Nested
+	@DisplayName("수강 확정 취소 기능")
+	class CancelConfirmedEnrollmentTest {
+		@Test
+		void 본인의_결제_확정_상태_수강_신청을_취소한다() {
+			// given
+			User creator = userRepository.save(UserFixture.USER_FIXTURE_1.createCreator());
+			Course course = createSavedOpenCourse(creator);
+
+			User user = userRepository.save(UserFixture.USER_FIXTURE_2.create());
+			Enrollment enrollment = createSavedConfirmedEnrollment(course, user, LocalDateTime.now());
+
+			// when
+			enrollmentService.cancelConfirm(enrollment.getId(), user.getId());
+
+			// then
+			Enrollment savedEnrollment = enrollmentRepository.findById(enrollment.getId())
+				.orElseThrow(() -> new AssertionError("수강 신청이 저장되지 않았습니다."));
+			Course savedCourse = courseRepository.findById(course.getId())
+				.orElseThrow(() -> new AssertionError("강의가 저장되지 않았습니다."));
+
+			assertAll(
+				() -> assertThat(savedEnrollment.getState()).isEqualTo(EnrollmentState.CANCELLED),
+				() -> assertThat(savedEnrollment.getCancelledAt()).isNotNull(),
+				() -> assertThat(savedCourse.getCapacity().getCurrent()).isZero()
+			);
+		}
+
+		@Test
+		void 본인의_수강_신청이_아니라면_수강_확정_취소_할_수_없다() {
+			// given
+			User creator = userRepository.save(UserFixture.USER_FIXTURE_1.createCreator());
+			Course course = createSavedOpenCourse(creator);
+
+			User user = userRepository.save(UserFixture.USER_FIXTURE_2.create());
+			User otherUser = userRepository.save(UserFixture.USER_FIXTURE_3.create());
+			Enrollment enrollment = createSavedConfirmedEnrollment(course, user, LocalDateTime.now());
+
+			// when & then
+			assertThatThrownBy(() -> enrollmentService.cancelConfirm(enrollment.getId(), otherUser.getId()))
+				.isInstanceOf(ForbiddenException.class);
+		}
+
+		@Test
+		void 수강_신청이_없다면_수강_확정_취소_할_수_없다() {
+			// given
+			User user = userRepository.save(UserFixture.USER_FIXTURE_2.create());
+
+			// when & then
+			assertThatThrownBy(() -> enrollmentService.cancelConfirm(999L, user.getId()))
+				.isInstanceOf(NotFoundException.class);
+		}
+
+		@Test
+		void 결제_대기_상태의_수강_신청은_수강_확정_취소_할_수_없다() {
+			// given
+			User creator = userRepository.save(UserFixture.USER_FIXTURE_1.createCreator());
+			Course course = createSavedOpenCourse(creator);
+
+			User user = userRepository.save(UserFixture.USER_FIXTURE_2.create());
+			Enrollment enrollment = enrollmentRepository.save(Enrollment.apply(course, user));
+
+			// when & then
+			assertThatThrownBy(() -> enrollmentService.cancelConfirm(enrollment.getId(), user.getId()))
+				.isInstanceOf(ConflictException.class);
+		}
+
+		@Test
+		void 결제_후_7일이_지나면_수강_확정_취소_할_수_없다() {
+			// given
+			User creator = userRepository.save(UserFixture.USER_FIXTURE_1.createCreator());
+			Course course = createSavedOpenCourse(creator);
+
+			User user = userRepository.save(UserFixture.USER_FIXTURE_2.create());
+			Enrollment enrollment = createSavedConfirmedEnrollment(course, user, LocalDateTime.now().minusDays(8));
+
+			// when & then
+			assertThatThrownBy(() -> enrollmentService.cancelConfirm(enrollment.getId(), user.getId()))
+				.isInstanceOf(BadRequestException.class);
+		}
+	}
+
+	private Enrollment createSavedConfirmedEnrollment(Course course, User user, LocalDateTime paidAt) {
+		Enrollment enrollment = enrollmentRepository.save(Enrollment.apply(course, user));
+		enrollment.confirmPayment(paidAt);
+		return enrollment;
 	}
 
 	private Course createSavedOpenCourse(User creator) {
