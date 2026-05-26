@@ -1,0 +1,138 @@
+package com.example.academy.enrollment.integration;
+
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.junit.jupiter.api.Assertions.assertAll;
+
+import java.time.LocalDate;
+
+import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Nested;
+import org.junit.jupiter.api.Test;
+import org.springframework.beans.factory.annotation.Autowired;
+
+import com.example.academy.common.exception.ConflictException;
+import com.example.academy.common.exception.NotFoundException;
+import com.example.academy.course.domain.Capacity;
+import com.example.academy.course.domain.Course;
+import com.example.academy.course.domain.CourseRepository;
+import com.example.academy.enrollment.application.EnrollmentService;
+import com.example.academy.enrollment.domain.Enrollment;
+import com.example.academy.enrollment.domain.EnrollmentRepository;
+import com.example.academy.enrollment.domain.EnrollmentState;
+import com.example.academy.identity.domain.user.User;
+import com.example.academy.identity.domain.user.UserRepository;
+import com.example.academy.support.IntegrationSupportTest;
+import com.example.academy.support.fixture.CourseFixture;
+import com.example.academy.support.fixture.UserFixture;
+
+class EnrollmentIntegrationTest extends IntegrationSupportTest {
+
+	@Autowired
+	private EnrollmentService enrollmentService;
+
+	@Autowired
+	private EnrollmentRepository enrollmentRepository;
+
+	@Autowired
+	private CourseRepository courseRepository;
+
+	@Autowired
+	private UserRepository userRepository;
+
+	@Nested
+	@DisplayName("수강 신청 기능")
+	class ApplyEnrollmentTest {
+		@Test
+		void 수강_신청을_저장한다() {
+			// given
+			User creator = userRepository.save(UserFixture.USER_FIXTURE_1.createCreator());
+			User user = userRepository.save(UserFixture.USER_FIXTURE_2.create());
+			Course course = createSavedOpenCourse(creator);
+
+			// when
+			Long enrollmentId = enrollmentService.apply(course.getId(), user.getId());
+
+			// then
+			Enrollment enrollment = enrollmentRepository.findById(enrollmentId)
+				.orElseThrow(() -> new AssertionError("수강 신청이 저장되지 않았습니다."));
+			Course savedCourse = courseRepository.findById(course.getId())
+				.orElseThrow(() -> new AssertionError("강의가 저장되지 않았습니다."));
+
+			assertAll(
+				() -> assertThat(enrollment.getState()).isEqualTo(EnrollmentState.PENDING),
+				() -> assertThat(enrollment.getCourse().getId()).isEqualTo(course.getId()),
+				() -> assertThat(enrollment.getUser().getId()).isEqualTo(user.getId()),
+				() -> assertThat(savedCourse.getCapacity().getCurrent()).isEqualTo(1)
+			);
+		}
+
+		@Test
+		void 강의가_없다면_예외를_반환한다() {
+			// given
+			User user = userRepository.save(UserFixture.USER_FIXTURE_2.create());
+
+			// when & then
+			assertThatThrownBy(() -> enrollmentService.apply(999L, user.getId()))
+				.isInstanceOf(NotFoundException.class);
+		}
+
+		@Test
+		void 사용자가_없다면_예외를_반환한다() {
+			// given
+			User creator = userRepository.save(UserFixture.USER_FIXTURE_1.createCreator());
+			Course course = createSavedOpenCourse(creator);
+
+			// when & then
+			assertThatThrownBy(() -> enrollmentService.apply(course.getId(), 999L))
+				.isInstanceOf(NotFoundException.class);
+		}
+
+		@Test
+		void 모집중인_강의가_아니라면_예외를_반환한다() {
+			// given
+			User creator = userRepository.save(UserFixture.USER_FIXTURE_1.createCreator());
+			User user = userRepository.save(UserFixture.USER_FIXTURE_2.create());
+			Course course = courseRepository.save(CourseFixture.COURSE_FIXTURE_1.create(creator));
+
+			// when & then
+			assertThatThrownBy(() -> enrollmentService.apply(course.getId(), user.getId()))
+				.isInstanceOf(ConflictException.class);
+		}
+
+		@Test
+		void 정원이_가득_찼다면_예외를_반환한다() {
+			// given
+			User creator = userRepository.save(UserFixture.USER_FIXTURE_1.createCreator());
+			User firstUser = userRepository.save(UserFixture.USER_FIXTURE_2.create());
+			User secondUser = userRepository.save(UserFixture.USER_FIXTURE_3.create());
+			Course course = createSavedOpenCourseWithCapacityOne(creator);
+
+			enrollmentService.apply(course.getId(), firstUser.getId());
+
+			// when & then
+			assertThatThrownBy(() -> enrollmentService.apply(course.getId(), secondUser.getId()))
+				.isInstanceOf(ConflictException.class);
+		}
+	}
+
+	private Course createSavedOpenCourse(User creator) {
+		Course course = courseRepository.save(CourseFixture.COURSE_FIXTURE_1.create(creator));
+		course.open();
+		return course;
+	}
+
+	private Course createSavedOpenCourseWithCapacityOne(User creator) {
+		Course course = courseRepository.save(Course.of(
+			"정원 1명 강의",
+			"수강 신청 정원 초과 테스트용 강의입니다.",
+			100_000,
+			new Capacity(1),
+			LocalDate.of(2026, 6, 1),
+			LocalDate.of(2026, 6, 30),
+			creator
+		));
+		course.open();
+		return course;
+	}
+}

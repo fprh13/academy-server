@@ -1,0 +1,34 @@
+package com.example.academy.enrollment.application;
+
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+import com.example.academy.common.exception.NotFoundException;
+import com.example.academy.course.domain.Course;
+import com.example.academy.course.domain.CourseRepository;
+import com.example.academy.enrollment.domain.Enrollment;
+import com.example.academy.enrollment.domain.EnrollmentRepository;
+import com.example.academy.identity.domain.user.User;
+import com.example.academy.identity.domain.user.UserRepository;
+
+import lombok.RequiredArgsConstructor;
+
+@Service
+@RequiredArgsConstructor
+@Transactional(readOnly = true)
+public class EnrollmentService {
+
+	private final EnrollmentRepository enrollmentRepository;
+	private final CourseRepository courseRepository;
+	private final UserRepository userRepository;
+
+	@Transactional
+	public Long apply(Long CourseId, Long userId) {
+		Course course = courseRepository.findById(CourseId)
+			.orElseThrow(() -> new NotFoundException(Course.class));
+		User user = userRepository.findById(userId)
+			.orElseThrow(() -> new NotFoundException(User.class));
+
+		return enrollmentRepository.save(Enrollment.apply(course, user)).getId();
+	}
+}

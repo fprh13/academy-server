@@ -28,6 +28,8 @@ import com.example.academy.common.infrastructure.config.SecurityConfig;
 import com.example.academy.common.presentation.HealthCheckController;
 import com.example.academy.course.application.CourseService;
 import com.example.academy.course.presentation.CourseController;
+import com.example.academy.enrollment.application.EnrollmentService;
+import com.example.academy.enrollment.presentation.EnrollmentController;
 import com.example.academy.identity.application.AuthService;
 import com.example.academy.identity.application.UserService;
 import com.example.academy.identity.domain.user.User;
@@ -47,6 +49,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 	UserController.class,
 	AuthController.class,
 	CourseController.class,
+	EnrollmentController.class,
 })
 @Import({
 	SecurityConfig.class,
@@ -94,6 +97,9 @@ public abstract class RestDocsSupport {
 
 	@MockitoBean
 	protected CourseService courseService;
+
+	@MockitoBean
+	protected EnrollmentService enrollmentService;
 
 	@BeforeEach
 	void setUp() {
