@@ -32,4 +32,10 @@ public class EnrollmentController {
 		enrollmentService.confirm(enrollmentId, user.getId());
 		return ResponseEntity.ok(ApiResponse.of());
 	}
+
+	@PostMapping("/{enrollmentId}/cancel")
+	public ResponseEntity<ApiResponse<Void>> cancel(@PathVariable Long enrollmentId, User user) {
+		enrollmentService.cancel(enrollmentId, user.getId());
+		return ResponseEntity.ok(ApiResponse.of());
+	}
 }
