@@ -81,7 +81,8 @@ public class SecurityConfig {
 					).authenticated()
 
 					.requestMatchers(
-						mvc.matcher(POST, COURSE_URI)
+						mvc.matcher(POST, COURSE_URI),
+						mvc.matcher(GET, COURSE_URI + "/{courseId}/classmates")
 					).authenticated()
 
 					.requestMatchers(

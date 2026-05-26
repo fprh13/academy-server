@@ -15,6 +15,7 @@ import com.example.academy.common.presentation.dto.PagingRequest;
 import com.example.academy.common.presentation.dto.PagingResponse;
 import com.example.academy.course.application.CourseService;
 import com.example.academy.course.presentation.dto.request.RegisterCourseRequest;
+import com.example.academy.course.presentation.dto.response.CourseClassmateInfoResponse;
 import com.example.academy.course.presentation.dto.response.CourseDetailResponse;
 import com.example.academy.course.presentation.dto.response.CourseSummaryResponse;
 import com.example.academy.identity.domain.user.User;
@@ -45,5 +46,16 @@ public class CourseController {
 		@RequestParam(required = false) String state
 	) {
 		return ResponseEntity.ok().body(ApiResponse.of(courseService.getCourses(state, pagingRequest)));
+	}
+
+	@GetMapping("/{courseId}/classmates")
+	public ResponseEntity<ApiResponse<PagingResponse<CourseClassmateInfoResponse>>> getCourseClassmates(
+		@ModelAttribute PagingRequest request,
+		@PathVariable Long courseId,
+		User creator
+	) {
+		return ResponseEntity.ok().body(
+			ApiResponse.of(courseService.getCourseClassmates(courseId, creator.getId(), request))
+		);
 	}
 }
