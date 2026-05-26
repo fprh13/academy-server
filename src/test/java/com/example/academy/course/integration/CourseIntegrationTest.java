@@ -19,8 +19,11 @@ import com.example.academy.course.domain.Course;
 import com.example.academy.course.domain.CourseRepository;
 import com.example.academy.course.domain.CourseState;
 import com.example.academy.course.presentation.dto.request.RegisterCourseRequest;
+import com.example.academy.course.presentation.dto.response.CourseClassmateInfoResponse;
 import com.example.academy.course.presentation.dto.response.CourseDetailResponse;
 import com.example.academy.course.presentation.dto.response.CourseSummaryResponse;
+import com.example.academy.enrollment.domain.Enrollment;
+import com.example.academy.enrollment.domain.EnrollmentRepository;
 import com.example.academy.identity.domain.user.User;
 import com.example.academy.identity.domain.user.UserRepository;
 import com.example.academy.support.IntegrationSupportTest;
@@ -39,6 +42,9 @@ class CourseIntegrationTest extends IntegrationSupportTest {
 
 	@Autowired
 	private UserRepository userRepository;
+
+	@Autowired
+	private EnrollmentRepository enrollmentRepository;
 
 	@Nested
 	@DisplayName("강의 생성 기능")
@@ -189,6 +195,75 @@ class CourseIntegrationTest extends IntegrationSupportTest {
 		}
 	}
 
+	@Nested
+	@DisplayName("강의 수강생 목록 페이징 조회 기능")
+	class GetCourseClassmatesTest {
+		@Test
+		void 본인_강의의_결제확정_수강생만_페이지로_조회한다() {
+			//given
+			User creator = userRepository.save(UserFixture.USER_FIXTURE_1.createCreator());
+			Course course = createSavedOpenCourse(creator, CourseFixture.COURSE_FIXTURE_1);
+
+			User confirmedUser = createSavedUser(UserFixture.USER_FIXTURE_2.create());
+			createSavedConfirmedEnrollment(course, confirmedUser);
+
+			User paddingUser = createSavedUser(UserFixture.USER_FIXTURE_3.create());
+			createSavedPendingEnrollment(course, paddingUser);
+
+			PagingRequest request = new PagingRequest(1, 10, null);
+
+			//when
+			PagingResponse<CourseClassmateInfoResponse> response = courseService.getCourseClassmates(
+				course.getId(),
+				creator.getId(),
+				request
+			);
+
+			//then
+			assertAll(
+				() -> assertThat(response.content()).hasSize(1),
+				() -> assertThat(response.content().get(0).userId()).isEqualTo(confirmedUser.getId()),
+				() -> assertThat(response.content().get(0).name()).isEqualTo(confirmedUser.getName()),
+				() -> assertThat(response.content().get(0).email()).isEqualTo(confirmedUser.getEmail()),
+				() -> assertThat(response.page().number()).isEqualTo(1),
+				() -> assertThat(response.page().size()).isEqualTo(10),
+				() -> assertThat(response.page().totalElements()).isEqualTo(1),
+				() -> assertThat(response.page().totalPages()).isEqualTo(1),
+				() -> assertThat(response.page().hasNext()).isFalse(),
+				() -> assertThat(response.page().hasPrevious()).isFalse()
+			);
+		}
+
+		@Test
+		void 강의가_없다면_예외를_반환한다() {
+			//given
+			User creator = userRepository.save(UserFixture.USER_FIXTURE_1.createCreator());
+			PagingRequest request = new PagingRequest(1, 10, null);
+
+			//when & then
+			assertThatThrownBy(() -> courseService.getCourseClassmates(999L, creator.getId(), request))
+				.isInstanceOf(NotFoundException.class);
+		}
+
+		@Test
+		void 본인_강의가_아니면_예외를_반환한다() {
+			//given
+			User creator = userRepository.save(UserFixture.USER_FIXTURE_1.createCreator());
+			User otherCreator = userRepository.save(User.registerAsCreator(
+				"creator2",
+				"test2@1234",
+				"creator2@test.com",
+				"다른강사"
+			));
+			Course course = createSavedOpenCourse(creator, CourseFixture.COURSE_FIXTURE_1);
+			PagingRequest request = new PagingRequest(1, 10, null);
+
+			//when & then
+			assertThatThrownBy(() -> courseService.getCourseClassmates(course.getId(), otherCreator.getId(), request))
+				.isInstanceOf(ForbiddenException.class);
+		}
+	}
+
 	private Course createSavedCourse(User creator) {
 		Course course = courseRepository.save(CourseFixture.COURSE_FIXTURE_1.create(creator));
 		course.open();
@@ -210,6 +285,25 @@ class CourseIntegrationTest extends IntegrationSupportTest {
 
 	private Course createSavedDraftCourse(User creator, CourseFixture fixture) {
 		return courseRepository.save(fixture.create(creator));
+	}
+
+	private Enrollment createSavedPendingEnrollment(Course course, User user) {
+		return enrollmentRepository.save(Enrollment.apply(course, user));
+	}
+
+	private Enrollment createSavedConfirmedEnrollment(Course course, User user) {
+		Enrollment enrollment = createSavedPendingEnrollment(course, user);
+		enrollment.confirmPayment(java.time.LocalDateTime.of(2026, 6, 1, 10, 0));
+		return enrollment;
+	}
+
+	private User createSavedUser(User user) {
+		return userRepository.save(User.register(
+			user.getLoginId(),
+			user.getPassword(),
+			user.getEmail(),
+			user.getName()
+		));
 	}
 
 	private RegisterCourseRequest createRequest() {
