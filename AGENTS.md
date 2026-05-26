@@ -21,7 +21,8 @@
 
 이 프로젝트는 수강 신청 시스템의 Spring Boot 백엔드입니다.
 
-- 어그리게이트 경계: `identity`, `enrollment`, `course`
+- 현재 도메인 경계: `identity`, `course`, `enrollment`
+- 현재 주요 어그리게이트: `User`, `Course`, `Enrollment`
 
 ---
 
