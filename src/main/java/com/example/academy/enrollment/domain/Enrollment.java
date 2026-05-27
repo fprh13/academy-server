@@ -56,7 +56,7 @@ public class Enrollment extends AggregateRoot<Enrollment> implements AccessPolic
 		return new Enrollment(course, user);
 	}
 
-	public void cancelApplication(LocalDateTime now) {
+	public void cancelApplication() {
 		if (state != EnrollmentState.PENDING) {
 			throw new ConflictException("결제 대기 상태의 수강 신청만 취소할 수 있습니다.");
 		}

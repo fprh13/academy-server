@@ -103,7 +103,7 @@ class EnrollmentTest {
 			Enrollment enrollment = Enrollment.apply(course, UserFixture.USER_FIXTURE_2.create());
 
 			// when
-			enrollment.cancelApplication(PAID_AT.plusDays(1));
+			enrollment.cancelApplication();
 
 			// then
 			assertThat(course.getCapacity().getCurrent()).isZero();
@@ -114,10 +114,9 @@ class EnrollmentTest {
 			// given
 			Course course = openCourse();
 			Enrollment enrollment = Enrollment.apply(course, UserFixture.USER_FIXTURE_2.create());
-			LocalDateTime cancelledAt = PAID_AT.plusDays(1);
 
 			// when
-			enrollment.cancelApplication(cancelledAt);
+			enrollment.cancelApplication();
 
 			// then
 			assertThat(enrollment.isPending()).isTrue();
@@ -131,7 +130,7 @@ class EnrollmentTest {
 			Enrollment enrollment = createConfirmedEnrollment();
 
 			// when & then
-			assertThatThrownBy(() -> enrollment.cancelApplication(PAID_AT.plusDays(1)))
+			assertThatThrownBy(enrollment::cancelApplication)
 				.isInstanceOf(ConflictException.class);
 		}
 	}

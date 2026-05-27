@@ -60,8 +60,7 @@ public class EnrollmentService {
 			throw new ForbiddenException();
 		}
 
-		LocalDateTime now = LocalDateTime.now();
-		enrollment.cancelApplication(now);
+		enrollment.cancelApplication();
 
 		enrollmentRepository.deleteById(enrollmentId);
 	}
