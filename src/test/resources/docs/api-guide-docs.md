@@ -4,32 +4,15 @@
 
 ---
 
-## ✅ 서버 상태 체크
-
-<details>
-<summary><strong>상세 보기</strong></summary>
-
-현재 위치한 API에 Try it out -> Execute 버튼을 눌러 확인합니다.
-
-**정상 응답**
-```text
-{
-  "message": "OK",
-  "data": null
-}
-```
-
-</details>
-
----
-
 ## 📄 API 테스트 사용법
 
 <details>
 <summary><strong>상세 보기</strong></summary>
 
 
-특정 API에 Try it out을 클릭 후 Examples: 하단에 시나리오에 맞는 예시 데이터를 선택하거나, 원하는 데이터를 입력한 후 Execute합니다.
+특정 API에 `Try it out`을 클릭 후 Examples: 하단에 시나리오에 맞는 예시 데이터를 선택하거나, 원하는 데이터를 입력한 후 `Execute`합니다.
+
+인증이 필요한 경우 하단 `인증(JWT) 정보`를 확인해주세요.
 
 
 
@@ -37,18 +20,57 @@
 
 ---
 
-## 🔐 JWT 토큰 사용법
+## 🔐 인증(JWT) 정보
 
 <details>
 <summary><strong>상세 보기</strong></summary>
 
-로그인 후 응답된 JWT 토큰을 복사해주세요.
+로그인 후 응답된 JWT 토큰을 복사해주세요. 혹은 하단 수강생/강사 계정의 JWT 토큰을 복사해주세요.
 
 1. Swagger 우측 상단의 **Authorize** 버튼을 클릭합니다.
 2. `value` 입력란에 복사한 토큰(`Bearer {token}` 형식)을 붙여넣고 저장합니다.
 3. 이제 모든 요청은 해당 JWT가 자동 포함되어 전송됩니다.
 
+#### 수강생 계정
+
+```text
+loginId: classmate
+password: classmate1234@
+```
+
+```http
+Authorization: Bearer eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJjbGFzc21hdGUiLCJyb2xlIjoiUk9MRV9VU0VSIiwiaWF0IjoxNzc5OTAzMjgzLCJleHAiOjEwNDE5ODE2ODgzfQ.jMGNpenWDlr-RlUlbgMNL05TuAhPhaGpm3_cptgZ9Ng
+```
+
+#### 강사 계정
+
+```text
+loginId: creator
+password: creator1234@
+```
+
+```http
+Authorization: Bearer eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJjcmVhdG9yIiwicm9sZSI6IlJPTEVfQ1JFQVRPUiIsImlhdCI6MTc3OTkwNzIzOCwiZXhwIjoxMDQxOTgyMDgzOH0.CKSm1f3N8NfeJCrjgb2kLwb1AXltZACikLiEOJdiY80
+```
+
+
 </details>
+
+---
+
+### 📚 더미 데이터 정보
+
+- 강사(`creator`)는 총 10개의 강의를 보유하고 있습니다.
+- 수강생(`classmate`)은 아래와 같은 수강 신청 이력을 가지고 있습니다.
+
+| 강의 ID | 상태 |
+|---|---|
+| 1번 강의 | `PENDING` |
+| 2번 강의 | `CONFIRMED` |
+| 3번 강의 | `CANCELLED` |
+| 4번 강의 | `CONFIRMED` |
+
+위 데이터를 기반으로 수강 신청, 취소, 목록 조회 등의 시나리오를 테스트할 수 있습니다.
 
 ---
 
@@ -60,14 +82,15 @@
 프로젝트 전반에서 사용하는 주요 도메인 용어입니다.
 
 | **용어**         | 설명 |
-|------------| --- |
-| **Class**  | 강의 |
+|----------------| --- |
+| **Course**     | 강의 |
 | **Creator**    | 강의를 개설하는 사용자(강사) |
 | **Enrollment** | 수강 신청 |
 | **DRAFT**      | 초안 상태 (신청 불가) |
 | **OPEN**       | 모집 중 상태 (신청 가능) |
 | **CLOSED**     | 모집 마감 상태 (신청 불가) |
 | **PENDING**    | 신청 완료, 결제 대기 상태 |
+| **WAITING**    | 웨이팅 대기열 상태 |
 | **CONFIRMED**  | 결제 완료, 수강 확정 상태 |
 | **CANCELLED**  | 수강 취소 상태 |
 
