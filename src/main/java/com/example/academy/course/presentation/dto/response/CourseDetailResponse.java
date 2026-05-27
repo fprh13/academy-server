@@ -12,6 +12,7 @@ public record CourseDetailResponse(
 	Integer price,
 	Integer maxCapacity,
 	Integer enrollmentCount,
+	String state,
 	LocalDate startDate,
 	LocalDate endDate,
 	CreatorInfo creatorInfo
@@ -24,6 +25,7 @@ public record CourseDetailResponse(
 			course.getPrice(),
 			course.getCapacity().getMax(),
 			course.getCapacity().getCurrent(),
+			course.getState().name(),
 			course.getStartDate(),
 			course.getEndDate(),
 			CreatorInfo.from(course.getCreator())

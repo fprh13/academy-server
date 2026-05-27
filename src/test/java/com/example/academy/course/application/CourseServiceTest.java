@@ -191,6 +191,7 @@ class CourseServiceTest {
 				() -> assertThat(response.price()).isEqualTo(course.getPrice()),
 				() -> assertThat(response.maxCapacity()).isEqualTo(course.getCapacity().getMax()),
 				() -> assertThat(response.enrollmentCount()).isEqualTo(course.getCapacity().getCurrent()),
+				() -> assertThat(response.state()).isEqualTo(course.getState().name()),
 				() -> assertThat(response.startDate()).isEqualTo(course.getStartDate()),
 				() -> assertThat(response.endDate()).isEqualTo(course.getEndDate()),
 				() -> assertThat(response.creatorInfo().creatorId()).isEqualTo(creator.getId()),

@@ -118,6 +118,7 @@ class CourseIntegrationTest extends IntegrationSupportTest {
 				() -> assertThat(response.price()).isEqualTo(savedCourse.getPrice()),
 				() -> assertThat(response.maxCapacity()).isEqualTo(savedCourse.getCapacity().getMax()),
 				() -> assertThat(response.enrollmentCount()).isEqualTo(savedCourse.getCapacity().getCurrent()),
+				() -> assertThat(response.state()).isEqualTo(savedCourse.getState().name()),
 				() -> assertThat(response.startDate()).isEqualTo(savedCourse.getStartDate()),
 				() -> assertThat(response.endDate()).isEqualTo(savedCourse.getEndDate()),
 				() -> assertThat(response.creatorInfo().creatorId()).isEqualTo(creator.getId()),

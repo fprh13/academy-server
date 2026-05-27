@@ -28,6 +28,7 @@ import com.example.academy.common.presentation.dto.ApiErrorResponse;
 import com.example.academy.common.presentation.dto.ApiResponse;
 import com.example.academy.common.presentation.dto.PagingResponse;
 import com.example.academy.course.domain.Course;
+import com.example.academy.course.domain.CourseState;
 import com.example.academy.course.presentation.dto.request.RegisterCourseRequest;
 import com.example.academy.course.presentation.dto.response.CourseClassmateInfoResponse;
 import com.example.academy.course.presentation.dto.response.CourseDetailResponse;
@@ -209,6 +210,7 @@ class CourseControllerTest extends RestDocsSupport {
 							fieldWithPath("data.price").description("강의 가격입니다.").type(JsonFieldType.NUMBER),
 							fieldWithPath("data.maxCapacity").description("최대 수강 정원입니다.").type(JsonFieldType.NUMBER),
 							fieldWithPath("data.enrollmentCount").description("현재 신청 인원입니다.").type(JsonFieldType.NUMBER),
+							fieldWithPath("data.state").description("강의 오픈 상태입니다.").type(JsonFieldType.STRING),
 							fieldWithPath("data.startDate").description("수강 시작일입니다.").type(JsonFieldType.STRING),
 							fieldWithPath("data.endDate").description("수강 종료일입니다.").type(JsonFieldType.STRING),
 							fieldWithPath("data.creatorInfo.creatorId").description("강사 식별자입니다.").type(JsonFieldType.NUMBER),
@@ -309,6 +311,7 @@ class CourseControllerTest extends RestDocsSupport {
 							fieldWithPath("data.content[].price").description("강의 가격입니다.").type(JsonFieldType.NUMBER),
 							fieldWithPath("data.content[].maxCapacity").description("최대 수강 정원입니다.").type(JsonFieldType.NUMBER),
 							fieldWithPath("data.content[].enrollmentCount").description("현재 신청 인원입니다.").type(JsonFieldType.NUMBER),
+							fieldWithPath("data.content[].state").description("강의 오픈 상태입니다.").type(JsonFieldType.STRING),
 							fieldWithPath("data.content[].startDate").description("수강 시작일입니다.").type(JsonFieldType.STRING),
 							fieldWithPath("data.content[].endDate").description("수강 종료일입니다.").type(JsonFieldType.STRING),
 							fieldWithPath("data.page.number").description("현재 페이지 번호입니다.").type(JsonFieldType.NUMBER),
@@ -452,6 +455,7 @@ class CourseControllerTest extends RestDocsSupport {
 			100000,
 			30,
 			7,
+			CourseState.OPEN.name(),
 			LocalDate.of(2026, 6, 1),
 			LocalDate.of(2026, 6, 30),
 			new CourseDetailResponse.CreatorInfo(
@@ -514,6 +518,7 @@ class CourseControllerTest extends RestDocsSupport {
 			100000,
 			30,
 			7,
+			CourseState.OPEN.name(),
 			LocalDate.of(2026, 5, 1),
 			LocalDate.of(2026, 6, 30)
 		);
