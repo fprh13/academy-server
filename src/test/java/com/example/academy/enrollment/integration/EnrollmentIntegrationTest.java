@@ -425,6 +425,69 @@ class EnrollmentIntegrationTest extends IntegrationSupportTest {
 	}
 
 	@Nested
+	@DisplayName("웨이팅 취소 기능")
+	class CancelWaitingEnrollmentTest {
+		@Test
+		void 본인의_웨이팅_상태_수강_신청을_취소한다() {
+			// given
+			User creator = userRepository.save(UserFixture.USER_FIXTURE_1.createCreator());
+			User user = userRepository.save(UserFixture.USER_FIXTURE_2.create());
+			Course course = createSavedOpenCourseWithCapacityOne(creator);
+			Enrollment waitingEnrollment = createSavedWaitingEnrollment(course, user);
+
+			// when
+			enrollmentService.cancelWaiting(waitingEnrollment.getId(), user.getId());
+
+			// then
+			Course savedCourse = courseRepository.findById(course.getId())
+				.orElseThrow(() -> new AssertionError("강의가 저장되지 않았습니다."));
+
+			assertAll(
+				() -> assertThat(enrollmentRepository.findById(waitingEnrollment.getId())).isEmpty(),
+				() -> assertThat(savedCourse.getCapacity().getCurrent()).isEqualTo(1)
+			);
+		}
+
+		@Test
+		void 본인의_수강_신청이_아니라면_웨이팅_취소_할_수_없다() {
+			// given
+			User creator = userRepository.save(UserFixture.USER_FIXTURE_1.createCreator());
+			User user = userRepository.save(UserFixture.USER_FIXTURE_2.create());
+			User otherUser = userRepository.save(User.register("wait-other", "wait-other@1234", "wait-other@test.com", "다른유저"));
+			Course course = createSavedOpenCourseWithCapacityOne(creator);
+			Enrollment waitingEnrollment = createSavedWaitingEnrollment(course, user);
+
+			// when & then
+			assertThatThrownBy(() -> enrollmentService.cancelWaiting(waitingEnrollment.getId(), otherUser.getId()))
+				.isInstanceOf(ForbiddenException.class);
+		}
+
+		@Test
+		void 수강_신청이_없다면_웨이팅_취소_할_수_없다() {
+			// given
+			User user = userRepository.save(UserFixture.USER_FIXTURE_2.create());
+
+			// when & then
+			assertThatThrownBy(() -> enrollmentService.cancelWaiting(999L, user.getId()))
+				.isInstanceOf(NotFoundException.class);
+		}
+
+		@Test
+		void 결제_대기_상태의_수강_신청은_웨이팅_취소_할_수_없다() {
+			// given
+			User creator = userRepository.save(UserFixture.USER_FIXTURE_1.createCreator());
+			Course course = createSavedOpenCourse(creator);
+
+			User user = userRepository.save(UserFixture.USER_FIXTURE_2.create());
+			Enrollment enrollment = createSavedPendingEnrollment(course, user);
+
+			// when & then
+			assertThatThrownBy(() -> enrollmentService.cancelWaiting(enrollment.getId(), user.getId()))
+				.isInstanceOf(ConflictException.class);
+		}
+	}
+
+	@Nested
 	@DisplayName("수강 신청 목록 조회 기능")
 	class GetEnrollmentsTest {
 		@Test

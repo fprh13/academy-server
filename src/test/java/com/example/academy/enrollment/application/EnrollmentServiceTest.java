@@ -528,6 +528,76 @@ class EnrollmentServiceTest {
 	}
 
 	@Nested
+	@DisplayName("웨이팅 취소")
+	class CancelWaitingEnrollment {
+		@Test
+		void 본인의_웨이팅_상태_수강_신청을_취소한다() {
+			// given
+			Long enrollmentId = 10L;
+			Long userId = 2L;
+			Enrollment enrollment = createWaitingEnrollment(enrollmentId, userId);
+
+			Mockito.when(enrollmentRepository.findById(enrollmentId))
+				.thenReturn(Optional.of(enrollment));
+
+			// when
+			enrollmentService.cancelWaiting(enrollmentId, userId);
+
+			// then
+			assertThat(enrollment.isWaiting()).isTrue();
+			Mockito.verify(enrollmentRepository, Mockito.times(1))
+				.findById(enrollmentId);
+			Mockito.verify(enrollmentRepository, Mockito.times(1))
+				.deleteById(enrollmentId);
+		}
+
+		@Test
+		void 본인의_수강_신청이_아니라면_웨이팅을_취소할_수_없다() {
+			// given
+			Long enrollmentId = 10L;
+			Long userId = 2L;
+			Long otherUserId = 3L;
+			Enrollment enrollment = createWaitingEnrollment(enrollmentId, userId);
+
+			Mockito.when(enrollmentRepository.findById(enrollmentId))
+				.thenReturn(Optional.of(enrollment));
+
+			// when & then
+			assertThatThrownBy(() -> enrollmentService.cancelWaiting(enrollmentId, otherUserId))
+				.isInstanceOf(ForbiddenException.class);
+		}
+
+		@Test
+		void 수강_신청이_없으면_웨이팅을_취소할_수_없다() {
+			// given
+			Long enrollmentId = 10L;
+			Long userId = 2L;
+
+			Mockito.when(enrollmentRepository.findById(enrollmentId))
+				.thenReturn(Optional.empty());
+
+			// when & then
+			assertThatThrownBy(() -> enrollmentService.cancelWaiting(enrollmentId, userId))
+				.isInstanceOf(NotFoundException.class);
+		}
+
+		@Test
+		void 결제_대기_상태의_수강_신청은_웨이팅_취소할_수_없다() {
+			// given
+			Long enrollmentId = 10L;
+			Long userId = 2L;
+			Enrollment enrollment = createPendingEnrollment(enrollmentId, userId);
+
+			Mockito.when(enrollmentRepository.findById(enrollmentId))
+				.thenReturn(Optional.of(enrollment));
+
+			// when & then
+			assertThatThrownBy(() -> enrollmentService.cancelWaiting(enrollmentId, userId))
+				.isInstanceOf(ConflictException.class);
+		}
+	}
+
+	@Nested
 	@DisplayName("수강 신청 목록 조회")
 	class GetEnrollments {
 		@Test

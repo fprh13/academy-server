@@ -226,6 +226,33 @@ class EnrollmentTest {
 		}
 	}
 
+	@Nested
+	@DisplayName("웨이팅 취소")
+	class CancelWaitingEnrollment {
+		@Test
+		void 웨이팅_상태의_수강_신청은_취소할_수_있다() {
+			// given
+			Enrollment enrollment = createWaitingEnrollment();
+
+			// when
+			enrollment.cancelWaiting();
+
+			// then
+			assertThat(enrollment.isWaiting()).isTrue();
+			assertThat(enrollment.getCancelledAt()).isNull();
+		}
+
+		@Test
+		void 결제_대기_상태의_수강_신청은_웨이팅_취소할_수_없다() {
+			// given
+			Enrollment enrollment = createPendingEnrollment();
+
+			// when & then
+			assertThatThrownBy(enrollment::cancelWaiting)
+				.isInstanceOf(ConflictException.class);
+		}
+	}
+
 	private static Course openCourse() {
 		User creator = UserFixture.USER_FIXTURE_1.createCreator();
 		Course course = CourseFixture.COURSE_FIXTURE_1.create(creator);

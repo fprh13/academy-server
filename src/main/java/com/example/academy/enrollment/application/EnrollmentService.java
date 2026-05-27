@@ -88,6 +88,19 @@ public class EnrollmentService {
 		promoteOldestWaitingEnrollment(course);
 	}
 
+	@Transactional
+	public void cancelWaiting(Long enrollmentId, Long userId) {
+		Enrollment enrollment = enrollmentRepository.findById(enrollmentId)
+			.orElseThrow(() -> new NotFoundException(Enrollment.class));
+
+		if (!enrollment.canAccess(userId)) {
+			throw new ForbiddenException();
+		}
+
+		enrollment.cancelWaiting();
+		enrollmentRepository.deleteById(enrollmentId);
+	}
+
 	public PagingResponse<EnrollmentInfoResponse> gets(PagingRequest request, String state, Long userId) {
 		return PagingResponse.from(
 			enrollmentRepository.findPageByUserIdAndStateIn(userId, state, request.page(), request.size(), request.sort())

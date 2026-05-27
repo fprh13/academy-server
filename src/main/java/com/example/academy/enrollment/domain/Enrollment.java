@@ -89,6 +89,12 @@ public class Enrollment extends AggregateRoot<Enrollment> implements AccessPolic
 		this.course.decreaseEnrollmentCount();
 	}
 
+	public void cancelWaiting() {
+		if (state != EnrollmentState.WAITING) {
+			throw new ConflictException("웨이팅 상태의 수강 신청만 취소할 수 있습니다.");
+		}
+	}
+
 	public void promoteToPending() {
 		this.state = EnrollmentState.PENDING;
 	}
