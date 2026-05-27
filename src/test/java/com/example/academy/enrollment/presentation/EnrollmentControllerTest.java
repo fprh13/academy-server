@@ -145,9 +145,9 @@ class EnrollmentControllerTest extends RestDocsSupport {
 		}
 
 		@Test
-		void 수강_신청_4XX_정원_초과() throws Exception {
+		void 수강_신청_4XX_이미_신청한_강의() throws Exception {
 			// given
-			String errorMessage = "정원이 가득 찼습니다.";
+			String errorMessage = "이미 신청한 강의입니다.";
 			ApplyEnrollmentRequest requestDto = new ApplyEnrollmentRequest(1L);
 
 			Mockito.doThrow(new ConflictException(errorMessage))

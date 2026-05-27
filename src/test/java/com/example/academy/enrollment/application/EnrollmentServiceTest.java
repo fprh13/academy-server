@@ -69,6 +69,8 @@ class EnrollmentServiceTest {
 				.thenReturn(Optional.of(course));
 			Mockito.when(userRepository.findById(user.getId()))
 				.thenReturn(Optional.of(user));
+			Mockito.when(enrollmentRepository.existsActiveEnrollment(course.getId(), user.getId()))
+				.thenReturn(false);
 			Mockito.when(enrollmentRepository.save(any(Enrollment.class)))
 				.thenAnswer(invocation -> {
 					Enrollment enrollment = invocation.getArgument(0);
@@ -93,6 +95,8 @@ class EnrollmentServiceTest {
 				.thenReturn(Optional.of(course));
 			Mockito.when(userRepository.findById(user.getId()))
 				.thenReturn(Optional.of(user));
+			Mockito.when(enrollmentRepository.existsActiveEnrollment(course.getId(), user.getId()))
+				.thenReturn(false);
 			Mockito.when(enrollmentRepository.save(any(Enrollment.class)))
 				.thenAnswer(invocation -> invocation.getArgument(0));
 
@@ -113,6 +117,8 @@ class EnrollmentServiceTest {
 				.thenReturn(Optional.of(course));
 			Mockito.when(userRepository.findById(user.getId()))
 				.thenReturn(Optional.of(user));
+			Mockito.when(enrollmentRepository.existsActiveEnrollment(course.getId(), user.getId()))
+				.thenReturn(false);
 			Mockito.when(enrollmentRepository.save(any(Enrollment.class)))
 				.thenAnswer(invocation -> invocation.getArgument(0));
 
@@ -134,6 +140,8 @@ class EnrollmentServiceTest {
 				.thenReturn(Optional.of(course));
 			Mockito.when(userRepository.findById(user.getId()))
 				.thenReturn(Optional.of(user));
+			Mockito.when(enrollmentRepository.existsActiveEnrollment(course.getId(), user.getId()))
+				.thenReturn(false);
 			Mockito.when(enrollmentRepository.save(any(Enrollment.class)))
 				.thenAnswer(invocation -> invocation.getArgument(0));
 
@@ -155,6 +163,8 @@ class EnrollmentServiceTest {
 				.thenReturn(Optional.of(course));
 			Mockito.when(userRepository.findById(user.getId()))
 				.thenReturn(Optional.of(user));
+			Mockito.when(enrollmentRepository.existsActiveEnrollment(course.getId(), user.getId()))
+				.thenReturn(false);
 			Mockito.when(enrollmentRepository.save(any(Enrollment.class)))
 				.thenAnswer(invocation -> invocation.getArgument(0));
 
@@ -184,6 +194,8 @@ class EnrollmentServiceTest {
 				.thenReturn(Optional.of(course));
 			Mockito.when(userRepository.findById(secondUser.getId()))
 				.thenReturn(Optional.of(secondUser));
+			Mockito.when(enrollmentRepository.existsActiveEnrollment(course.getId(), secondUser.getId()))
+				.thenReturn(false);
 			Mockito.when(enrollmentRepository.save(any(Enrollment.class)))
 				.thenAnswer(invocation -> invocation.getArgument(0));
 
@@ -200,6 +212,28 @@ class EnrollmentServiceTest {
 			assertThat(enrollment.getCourse()).isSameAs(course);
 			assertThat(enrollment.getUser()).isSameAs(secondUser);
 			assertThat(course.getCapacity().getCurrent()).isEqualTo(1);
+		}
+
+		@Test
+		void 취소되지_않은_기존_수강_신청이_있으면_중복_신청할_수_없다() {
+			// given
+			Course course = createOpenCourse(1L);
+			User user = createUser(2L);
+
+			Mockito.when(courseRepository.findByIdForUpdate(course.getId()))
+				.thenReturn(Optional.of(course));
+			Mockito.when(userRepository.findById(user.getId()))
+				.thenReturn(Optional.of(user));
+			Mockito.when(enrollmentRepository.existsActiveEnrollment(course.getId(), user.getId()))
+				.thenReturn(true);
+
+			// when & then
+			assertThatThrownBy(() -> enrollmentService.apply(course.getId(), user.getId()))
+				.isInstanceOf(ConflictException.class)
+				.hasMessage("이미 신청한 강의입니다.");
+
+			Mockito.verify(enrollmentRepository, Mockito.never())
+				.save(any(Enrollment.class));
 		}
 	}
 

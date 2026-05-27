@@ -9,6 +9,7 @@ public interface EnrollmentRepository {
 	Enrollment save(Enrollment enrollment);
 	void deleteById(Long enrollmentId);
 
+	boolean existsActiveEnrollment(Long courseId, Long userId);
 	Optional<Enrollment> findById(Long enrollmentId);
 	Page<Enrollment> findPageByUserIdAndStateIn(Long userId, String state, int page, int size, String sort);
 	Page<Enrollment> findPageByCourseIdAndState(Long courseId, int page, int size);

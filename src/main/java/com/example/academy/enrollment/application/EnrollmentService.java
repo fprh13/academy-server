@@ -5,6 +5,7 @@ import java.time.LocalDateTime;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import com.example.academy.common.exception.ConflictException;
 import com.example.academy.common.exception.ForbiddenException;
 import com.example.academy.common.exception.NotFoundException;
 import com.example.academy.common.presentation.dto.PagingRequest;
@@ -35,6 +36,7 @@ public class EnrollmentService {
 		User user = userRepository.findById(userId)
 			.orElseThrow(() -> new NotFoundException(User.class));
 
+		validateDuplicateEnrollment(courseId, userId);
 		return enrollmentRepository.save(Enrollment.apply(course, user)).getId();
 	}
 
@@ -114,5 +116,12 @@ public class EnrollmentService {
 				waitingEnrollment.promoteToPending();
 				course.increaseEnrollmentCount();
 			});
+	}
+
+	private void validateDuplicateEnrollment(Long courseId, Long userId) {
+		boolean exists = enrollmentRepository.existsActiveEnrollment(courseId, userId);
+		if (exists) {
+			throw new ConflictException("이미 신청한 강의입니다.");
+		}
 	}
 }
