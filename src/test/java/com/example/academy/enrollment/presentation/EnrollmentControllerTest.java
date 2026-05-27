@@ -549,6 +549,130 @@ class EnrollmentControllerTest extends RestDocsSupport {
 	}
 
 	@Nested
+	@DisplayName("웨이팅 취소 API 테스트")
+	class CancelWaitingEnrollmentTest {
+		@Test
+		void 웨이팅_취소_2XX() throws Exception {
+			// given
+			Long enrollmentId = 1L;
+			Mockito.doNothing().when(enrollmentService).cancelWaiting(enrollmentId, 1L);
+
+			// when
+			ResultActions actions = mockMvc.perform(
+				post(BASE_URI + "/{enrollmentId}/wait-cancel", enrollmentId)
+					.contentType(MediaType.APPLICATION_JSON));
+
+			// then
+			actions
+				.andExpect(status().isOk())
+				.andExpect(jsonPath("$.message").value(BASE_SUCCESS_MESSAGE))
+				.andExpect(jsonPath("$.data").isEmpty())
+				.andDo(restDocsHandler.document(
+					ResourceDocumentation.resource(ResourceSnippetParameters.builder()
+						.tag(BASE_TAG)
+						.summary("웨이팅 취소")
+						.description("## 웨이팅 취소 기능 \n"
+							+ "### 사용법 \n"
+							+ "- 본인의 웨이팅 상태 수강 신청을 취소합니다.\n"
+							+ "- 웨이팅 상태 수강 신청만 취소할 수 있습니다.\n"
+						)
+						.pathParameters(
+							parameterWithName("enrollmentId").description("웨이팅 취소할 수강 신청의 PK입니다.")
+						)
+						.responseSchema(Schema.schema(ApiResponse.class.getSimpleName()))
+						.build())
+				));
+		}
+
+		@Test
+		void 웨이팅_취소_4XX_수강신청_없음() throws Exception {
+			// given
+			Long enrollmentId = 999L;
+			String errorMessage = Enrollment.class.getSimpleName() + "을(를) 찾을 수 없습니다.";
+
+			Mockito.doThrow(new NotFoundException(Enrollment.class))
+				.when(enrollmentService)
+				.cancelWaiting(enrollmentId, 1L);
+
+			// when
+			ResultActions actions = mockMvc.perform(
+				post(BASE_URI + "/{enrollmentId}/wait-cancel", enrollmentId)
+					.contentType(MediaType.APPLICATION_JSON));
+
+			// then
+			actions
+				.andExpect(status().isNotFound())
+				.andExpect(
+					result -> assertInstanceOf(NotFoundException.class, result.getResolvedException()))
+				.andExpect(jsonPath("$.message").value(errorMessage))
+				.andDo(restDocsHandler.document(
+					ResourceDocumentation.resource(ResourceSnippetParameters.builder()
+						.tag(BASE_TAG)
+						.responseSchema(Schema.schema(ApiErrorResponse.class.getSimpleName()))
+						.build())
+				));
+		}
+
+		@Test
+		void 웨이팅_취소_4XX_본인_신청_아님() throws Exception {
+			// given
+			Long enrollmentId = 1L;
+			String errorMessage = "접근 권한이 없습니다.";
+
+			Mockito.doThrow(new ForbiddenException())
+				.when(enrollmentService)
+				.cancelWaiting(enrollmentId, 1L);
+
+			// when
+			ResultActions actions = mockMvc.perform(
+				post(BASE_URI + "/{enrollmentId}/wait-cancel", enrollmentId)
+					.contentType(MediaType.APPLICATION_JSON));
+
+			// then
+			actions
+				.andExpect(status().isForbidden())
+				.andExpect(
+					result -> assertInstanceOf(ForbiddenException.class, result.getResolvedException()))
+				.andExpect(jsonPath("$.message").value(errorMessage))
+				.andDo(restDocsHandler.document(
+					ResourceDocumentation.resource(ResourceSnippetParameters.builder()
+						.tag(BASE_TAG)
+						.responseSchema(Schema.schema(ApiErrorResponse.class.getSimpleName()))
+						.build())
+				));
+		}
+
+		@Test
+		void 웨이팅_취소_4XX_웨이팅_상태_아님() throws Exception {
+			// given
+			Long enrollmentId = 1L;
+			String errorMessage = "웨이팅 상태의 수강 신청만 취소할 수 있습니다.";
+
+			Mockito.doThrow(new ConflictException(errorMessage))
+				.when(enrollmentService)
+				.cancelWaiting(enrollmentId, 1L);
+
+			// when
+			ResultActions actions = mockMvc.perform(
+				post(BASE_URI + "/{enrollmentId}/wait-cancel", enrollmentId)
+					.contentType(MediaType.APPLICATION_JSON));
+
+			// then
+			actions
+				.andExpect(status().isConflict())
+				.andExpect(
+					result -> assertInstanceOf(ConflictException.class, result.getResolvedException()))
+				.andExpect(jsonPath("$.message").value(errorMessage))
+				.andDo(restDocsHandler.document(
+					ResourceDocumentation.resource(ResourceSnippetParameters.builder()
+						.tag(BASE_TAG)
+						.responseSchema(Schema.schema(ApiErrorResponse.class.getSimpleName()))
+						.build())
+				));
+		}
+	}
+
+	@Nested
 	@DisplayName("수강 신청 목록 조회 API 테스트")
 	class GetEnrollmentsTest {
 		@Test

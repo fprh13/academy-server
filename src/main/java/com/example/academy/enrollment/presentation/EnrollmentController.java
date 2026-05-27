@@ -45,6 +45,12 @@ public class EnrollmentController {
 		return ResponseEntity.ok(ApiResponse.of());
 	}
 
+	@PostMapping("/{enrollmentId}/wait-cancel")
+	public ResponseEntity<ApiResponse<Void>> cancelWaiting(@PathVariable Long enrollmentId, User user) {
+		enrollmentService.cancelWaiting(enrollmentId, user.getId());
+		return ResponseEntity.ok(ApiResponse.of());
+	}
+
 	@PostMapping("/{enrollmentId}/refund")
 	public ResponseEntity<ApiResponse<Void>> refund(@PathVariable Long enrollmentId, User user) {
 		enrollmentService.cancelConfirm(enrollmentId, user.getId());
