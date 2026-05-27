@@ -47,7 +47,7 @@ public class CourseService {
 	public PagingResponse<CourseSummaryResponse> getCourses(String state, PagingRequest request) {
 		return PagingResponse.from(
 			courseRepository.findPageByCourseStateIn(state, request.page(), request.size(), request.sort())
-				.map(CourseSummaryResponse::of)
+				.map(CourseSummaryResponse::from)
 		);
 	}
 

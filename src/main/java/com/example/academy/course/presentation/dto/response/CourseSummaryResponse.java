@@ -15,7 +15,7 @@ public record CourseSummaryResponse(
 	LocalDate startDate,
 	LocalDate endDate
 ) {
-	public static CourseSummaryResponse of(Course course) {
+	public static CourseSummaryResponse from(Course course) {
 		return new CourseSummaryResponse(
 			course.getId(),
 			course.getCreator().getName(),
