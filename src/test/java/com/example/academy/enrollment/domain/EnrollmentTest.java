@@ -53,16 +53,21 @@ class EnrollmentTest {
 		}
 
 		@Test
-		void 정원이_가득_찼다면_수강_신청할_수_없다() {
+		void 정원이_가득_찼다면_WAITING_상태로_수강_신청된다() {
 			// given
 			Course course = openCourseWithCapacityOne();
 			User firstUser = UserFixture.USER_FIXTURE_2.create();
 			User secondUser = UserFixture.USER_FIXTURE_3.create();
 			Enrollment.apply(course, firstUser);
 
-			// when & then
-			assertThatThrownBy(() -> Enrollment.apply(course, secondUser))
-				.isInstanceOf(ConflictException.class);
+			// when
+			Enrollment enrollment = Enrollment.apply(course, secondUser);
+
+			// then
+			assertThat(enrollment.isWaiting()).isTrue();
+			assertThat(enrollment.getCourse()).isSameAs(course);
+			assertThat(enrollment.getUser()).isSameAs(secondUser);
+			assertThat(course.getCapacity().getCurrent()).isEqualTo(1);
 		}
 	}
 
@@ -91,6 +96,16 @@ class EnrollmentTest {
 			assertThatThrownBy(() -> enrollment.confirmPayment(PAID_AT.plusHours(1)))
 				.isInstanceOf(ConflictException.class);
 		}
+
+		@Test
+		void 웨이팅_상태의_수강_신청은_결제를_확정할_수_없다() {
+			// given
+			Enrollment enrollment = createWaitingEnrollment();
+
+			// when & then
+			assertThatThrownBy(() -> enrollment.confirmPayment(PAID_AT))
+				.isInstanceOf(ConflictException.class);
+		}
 	}
 
 	@Nested
@@ -103,7 +118,7 @@ class EnrollmentTest {
 			Enrollment enrollment = Enrollment.apply(course, UserFixture.USER_FIXTURE_2.create());
 
 			// when
-			enrollment.cancelApplication(PAID_AT.plusDays(1));
+			enrollment.cancelApplication();
 
 			// then
 			assertThat(course.getCapacity().getCurrent()).isZero();
@@ -114,10 +129,9 @@ class EnrollmentTest {
 			// given
 			Course course = openCourse();
 			Enrollment enrollment = Enrollment.apply(course, UserFixture.USER_FIXTURE_2.create());
-			LocalDateTime cancelledAt = PAID_AT.plusDays(1);
 
 			// when
-			enrollment.cancelApplication(cancelledAt);
+			enrollment.cancelApplication();
 
 			// then
 			assertThat(enrollment.isPending()).isTrue();
@@ -131,7 +145,17 @@ class EnrollmentTest {
 			Enrollment enrollment = createConfirmedEnrollment();
 
 			// when & then
-			assertThatThrownBy(() -> enrollment.cancelApplication(PAID_AT.plusDays(1)))
+			assertThatThrownBy(enrollment::cancelApplication)
+				.isInstanceOf(ConflictException.class);
+		}
+
+		@Test
+		void 웨이팅_상태의_수강_신청은_취소할_수_없다() {
+			// given
+			Enrollment enrollment = createWaitingEnrollment();
+
+			// when & then
+			assertThatThrownBy(enrollment::cancelApplication)
 				.isInstanceOf(ConflictException.class);
 		}
 	}
@@ -202,6 +226,33 @@ class EnrollmentTest {
 		}
 	}
 
+	@Nested
+	@DisplayName("웨이팅 취소")
+	class CancelWaitingEnrollment {
+		@Test
+		void 웨이팅_상태의_수강_신청은_취소할_수_있다() {
+			// given
+			Enrollment enrollment = createWaitingEnrollment();
+
+			// when
+			enrollment.cancelWaiting();
+
+			// then
+			assertThat(enrollment.isWaiting()).isTrue();
+			assertThat(enrollment.getCancelledAt()).isNull();
+		}
+
+		@Test
+		void 결제_대기_상태의_수강_신청은_웨이팅_취소할_수_없다() {
+			// given
+			Enrollment enrollment = createPendingEnrollment();
+
+			// when & then
+			assertThatThrownBy(enrollment::cancelWaiting)
+				.isInstanceOf(ConflictException.class);
+		}
+	}
+
 	private static Course openCourse() {
 		User creator = UserFixture.USER_FIXTURE_1.createCreator();
 		Course course = CourseFixture.COURSE_FIXTURE_1.create(creator);
@@ -226,6 +277,12 @@ class EnrollmentTest {
 
 	private static Enrollment createPendingEnrollment() {
 		return Enrollment.apply(openCourse(), UserFixture.USER_FIXTURE_2.create());
+	}
+
+	private static Enrollment createWaitingEnrollment() {
+		Course course = openCourseWithCapacityOne();
+		Enrollment.apply(course, UserFixture.USER_FIXTURE_2.create());
+		return Enrollment.apply(course, UserFixture.USER_FIXTURE_3.create());
 	}
 
 	private static Enrollment createConfirmedEnrollment() {

@@ -29,8 +29,8 @@ public class EnrollmentService {
 	private final UserRepository userRepository;
 
 	@Transactional
-	public Long apply(Long CourseId, Long userId) {
-		Course course = courseRepository.findById(CourseId)
+	public Long apply(Long courseId, Long userId) {
+		Course course = courseRepository.findByIdForUpdate(courseId)
 			.orElseThrow(() -> new NotFoundException(Course.class));
 		User user = userRepository.findById(userId)
 			.orElseThrow(() -> new NotFoundException(User.class));
@@ -60,8 +60,11 @@ public class EnrollmentService {
 			throw new ForbiddenException();
 		}
 
-		LocalDateTime now = LocalDateTime.now();
-		enrollment.cancelApplication(now);
+		Course course = courseRepository.findByIdForUpdate(enrollment.getCourse().getId())
+			.orElseThrow(() -> new NotFoundException(Course.class));
+
+		enrollment.cancelApplication();
+		promoteOldestWaitingEnrollment(course);
 
 		enrollmentRepository.deleteById(enrollmentId);
 	}
@@ -76,8 +79,26 @@ public class EnrollmentService {
 			throw new ForbiddenException();
 		}
 
+		Course course = courseRepository.findByIdForUpdate(enrollment.getCourse().getId())
+			.orElseThrow(() -> new NotFoundException(Course.class));
+
 		LocalDateTime now = LocalDateTime.now();
 		enrollment.cancelConfirmed(now);
+
+		promoteOldestWaitingEnrollment(course);
+	}
+
+	@Transactional
+	public void cancelWaiting(Long enrollmentId, Long userId) {
+		Enrollment enrollment = enrollmentRepository.findById(enrollmentId)
+			.orElseThrow(() -> new NotFoundException(Enrollment.class));
+
+		if (!enrollment.canAccess(userId)) {
+			throw new ForbiddenException();
+		}
+
+		enrollment.cancelWaiting();
+		enrollmentRepository.deleteById(enrollmentId);
 	}
 
 	public PagingResponse<EnrollmentInfoResponse> gets(PagingRequest request, String state, Long userId) {
@@ -85,5 +106,13 @@ public class EnrollmentService {
 			enrollmentRepository.findPageByUserIdAndStateIn(userId, state, request.page(), request.size(), request.sort())
 				.map(EnrollmentInfoResponse::from)
 		);
+	}
+
+	private void promoteOldestWaitingEnrollment(Course course) {
+		enrollmentRepository.findOldestWaitingByCourseIdForUpdate(course.getId())
+			.ifPresent(waitingEnrollment -> {
+				waitingEnrollment.promoteToPending();
+				course.increaseEnrollmentCount();
+			});
 	}
 }

@@ -52,6 +52,11 @@ public class CourseRepositoryImpl implements CourseRepository {
 		return jpaCourseRepository.findPageByCourseStateIn(states, PageRequest.of(page, size, courseSort));
 	}
 
+	@Override
+	public Optional<Course> findByIdForUpdate(Long courseId) {
+		return jpaCourseRepository.findByIdForUpdate(courseId);
+	}
+
 	private Sort resolveCourseSort(String sort) {
 		if (SORT_DEADLINE.equalsIgnoreCase(sort)) {
 			return Sort.by(Sort.Direction.ASC, DEADLINE_SORT_FIELD);
@@ -65,4 +70,6 @@ public class CourseRepositoryImpl implements CourseRepository {
 		}
 		return List.of(CourseState.OPEN, CourseState.CLOSED);
 	}
+
+
 }

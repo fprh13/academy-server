@@ -5,6 +5,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
 
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
@@ -23,10 +24,12 @@ import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.test.util.ReflectionTestUtils;
 
+import com.example.academy.common.exception.ConflictException;
 import com.example.academy.common.exception.ForbiddenException;
 import com.example.academy.common.exception.NotFoundException;
 import com.example.academy.common.presentation.dto.PagingRequest;
 import com.example.academy.common.presentation.dto.PagingResponse;
+import com.example.academy.course.domain.Capacity;
 import com.example.academy.course.domain.Course;
 import com.example.academy.course.domain.CourseRepository;
 import com.example.academy.enrollment.domain.Enrollment;
@@ -62,7 +65,7 @@ class EnrollmentServiceTest {
 			Course course = createOpenCourse(1L);
 			User user = createUser(2L);
 
-			Mockito.when(courseRepository.findById(course.getId()))
+			Mockito.when(courseRepository.findByIdForUpdate(course.getId()))
 				.thenReturn(Optional.of(course));
 			Mockito.when(userRepository.findById(user.getId()))
 				.thenReturn(Optional.of(user));
@@ -86,7 +89,7 @@ class EnrollmentServiceTest {
 			Course course = createOpenCourse(1L);
 			User user = createUser(2L);
 
-			Mockito.when(courseRepository.findById(course.getId()))
+			Mockito.when(courseRepository.findByIdForUpdate(course.getId()))
 				.thenReturn(Optional.of(course));
 			Mockito.when(userRepository.findById(user.getId()))
 				.thenReturn(Optional.of(user));
@@ -106,7 +109,7 @@ class EnrollmentServiceTest {
 			Course course = createOpenCourse(1L);
 			User user = createUser(2L);
 
-			Mockito.when(courseRepository.findById(course.getId()))
+			Mockito.when(courseRepository.findByIdForUpdate(course.getId()))
 				.thenReturn(Optional.of(course));
 			Mockito.when(userRepository.findById(user.getId()))
 				.thenReturn(Optional.of(user));
@@ -118,7 +121,7 @@ class EnrollmentServiceTest {
 
 			// then
 			Mockito.verify(courseRepository, Mockito.times(1))
-				.findById(course.getId());
+				.findByIdForUpdate(course.getId());
 		}
 
 		@Test
@@ -127,7 +130,7 @@ class EnrollmentServiceTest {
 			Course course = createOpenCourse(1L);
 			User user = createUser(2L);
 
-			Mockito.when(courseRepository.findById(course.getId()))
+			Mockito.when(courseRepository.findByIdForUpdate(course.getId()))
 				.thenReturn(Optional.of(course));
 			Mockito.when(userRepository.findById(user.getId()))
 				.thenReturn(Optional.of(user));
@@ -148,7 +151,7 @@ class EnrollmentServiceTest {
 			Course course = createOpenCourse(1L);
 			User user = createUser(2L);
 
-			Mockito.when(courseRepository.findById(course.getId()))
+			Mockito.when(courseRepository.findByIdForUpdate(course.getId()))
 				.thenReturn(Optional.of(course));
 			Mockito.when(userRepository.findById(user.getId()))
 				.thenReturn(Optional.of(user));
@@ -167,6 +170,36 @@ class EnrollmentServiceTest {
 			assertThat(enrollment.isPending()).isTrue();
 			assertThat(enrollment.getCourse()).isSameAs(course);
 			assertThat(enrollment.getUser()).isSameAs(user);
+		}
+
+		@Test
+		void 정원이_가득_찼다면_웨이팅_상태의_수강_신청을_저장한다() {
+			// given
+			Course course = createOpenCourseWithCapacityOne(1L);
+			User firstUser = createUser(2L);
+			User secondUser = createUser(3L);
+			Enrollment.apply(course, firstUser);
+
+			Mockito.when(courseRepository.findByIdForUpdate(course.getId()))
+				.thenReturn(Optional.of(course));
+			Mockito.when(userRepository.findById(secondUser.getId()))
+				.thenReturn(Optional.of(secondUser));
+			Mockito.when(enrollmentRepository.save(any(Enrollment.class)))
+				.thenAnswer(invocation -> invocation.getArgument(0));
+
+			// when
+			enrollmentService.apply(course.getId(), secondUser.getId());
+
+			// then
+			ArgumentCaptor<Enrollment> enrollmentCaptor = ArgumentCaptor.forClass(Enrollment.class);
+			Mockito.verify(enrollmentRepository, Mockito.times(1))
+				.save(enrollmentCaptor.capture());
+
+			Enrollment enrollment = enrollmentCaptor.getValue();
+			assertThat(enrollment.isWaiting()).isTrue();
+			assertThat(enrollment.getCourse()).isSameAs(course);
+			assertThat(enrollment.getUser()).isSameAs(secondUser);
+			assertThat(course.getCapacity().getCurrent()).isEqualTo(1);
 		}
 	}
 
@@ -240,6 +273,21 @@ class EnrollmentServiceTest {
 			assertThatThrownBy(() -> enrollmentService.confirm(enrollmentId, userId))
 				.isInstanceOf(NotFoundException.class);
 		}
+
+		@Test
+		void 웨이팅_상태의_수강_신청은_확정할_수_없다() {
+			// given
+			Long enrollmentId = 10L;
+			Long userId = 2L;
+			Enrollment enrollment = createWaitingEnrollment(enrollmentId, userId);
+
+			Mockito.when(enrollmentRepository.findById(enrollmentId))
+				.thenReturn(Optional.of(enrollment));
+
+			// when & then
+			assertThatThrownBy(() -> enrollmentService.confirm(enrollmentId, userId))
+				.isInstanceOf(ConflictException.class);
+		}
 	}
 
 	@Nested
@@ -254,6 +302,10 @@ class EnrollmentServiceTest {
 
 			Mockito.when(enrollmentRepository.findById(enrollmentId))
 				.thenReturn(Optional.of(enrollment));
+			Mockito.when(courseRepository.findByIdForUpdate(enrollment.getCourse().getId()))
+				.thenReturn(Optional.of(enrollment.getCourse()));
+			Mockito.when(enrollmentRepository.findOldestWaitingByCourseIdForUpdate(enrollment.getCourse().getId()))
+				.thenReturn(Optional.empty());
 
 			// when
 			enrollmentService.cancel(enrollmentId, userId);
@@ -262,6 +314,46 @@ class EnrollmentServiceTest {
 			assertThat(enrollment.isPending()).isTrue();
 			assertThat(enrollment.getCancelledAt()).isNull();
 			assertThat(enrollment.getCourse().getCapacity().getCurrent()).isZero();
+			Mockito.verify(enrollmentRepository, Mockito.times(1))
+				.findById(enrollmentId);
+			Mockito.verify(courseRepository, Mockito.times(1))
+				.findByIdForUpdate(enrollment.getCourse().getId());
+			Mockito.verify(enrollmentRepository, Mockito.times(1))
+				.findOldestWaitingByCourseIdForUpdate(enrollment.getCourse().getId());
+			Mockito.verify(enrollmentRepository, Mockito.times(1))
+				.deleteById(enrollmentId);
+		}
+
+		@Test
+		void 수강_신청을_취소하면_가장_오래된_웨이팅_수강_신청을_결제_대기_상태로_승격한다() {
+			// given
+			Long enrollmentId = 10L;
+			Long userId = 2L;
+			Course course = createOpenCourseWithCapacityOne(1L);
+			Enrollment enrollment = Enrollment.apply(course, createUser(userId));
+			Enrollment waitingEnrollment = Enrollment.apply(course, createUser(3L));
+			ReflectionTestUtils.setField(enrollment, "id", enrollmentId);
+			ReflectionTestUtils.setField(waitingEnrollment, "id", 11L);
+
+			Mockito.when(enrollmentRepository.findById(enrollmentId))
+				.thenReturn(Optional.of(enrollment));
+			Mockito.when(courseRepository.findByIdForUpdate(course.getId()))
+				.thenReturn(Optional.of(course));
+			Mockito.when(enrollmentRepository.findOldestWaitingByCourseIdForUpdate(course.getId()))
+				.thenReturn(Optional.of(waitingEnrollment));
+
+			// when
+			enrollmentService.cancel(enrollmentId, userId);
+
+			// then
+			assertAll(
+				() -> assertThat(waitingEnrollment.isPending()).isTrue(),
+				() -> assertThat(course.getCapacity().getCurrent()).isEqualTo(1)
+			);
+			Mockito.verify(courseRepository, Mockito.times(1))
+				.findByIdForUpdate(course.getId());
+			Mockito.verify(enrollmentRepository, Mockito.times(1))
+				.findOldestWaitingByCourseIdForUpdate(course.getId());
 			Mockito.verify(enrollmentRepository, Mockito.times(1))
 				.deleteById(enrollmentId);
 		}
@@ -295,6 +387,23 @@ class EnrollmentServiceTest {
 			assertThatThrownBy(() -> enrollmentService.cancel(enrollmentId, userId))
 				.isInstanceOf(NotFoundException.class);
 		}
+
+		@Test
+		void 웨이팅_상태의_수강_신청은_취소할_수_없다() {
+			// given
+			Long enrollmentId = 10L;
+			Long userId = 2L;
+			Enrollment enrollment = createWaitingEnrollment(enrollmentId, userId);
+
+			Mockito.when(enrollmentRepository.findById(enrollmentId))
+				.thenReturn(Optional.of(enrollment));
+			Mockito.when(courseRepository.findByIdForUpdate(enrollment.getCourse().getId()))
+				.thenReturn(Optional.of(enrollment.getCourse()));
+
+			// when & then
+			assertThatThrownBy(() -> enrollmentService.cancel(enrollmentId, userId))
+				.isInstanceOf(ConflictException.class);
+		}
 	}
 
 	@Nested
@@ -309,6 +418,10 @@ class EnrollmentServiceTest {
 
 			Mockito.when(enrollmentRepository.findById(enrollmentId))
 				.thenReturn(Optional.of(enrollment));
+			Mockito.when(courseRepository.findByIdForUpdate(enrollment.getCourse().getId()))
+				.thenReturn(Optional.of(enrollment.getCourse()));
+			Mockito.when(enrollmentRepository.findOldestWaitingByCourseIdForUpdate(enrollment.getCourse().getId()))
+				.thenReturn(Optional.empty());
 
 			// when
 			enrollmentService.cancelConfirm(enrollmentId, userId);
@@ -317,6 +430,46 @@ class EnrollmentServiceTest {
 			assertThat(enrollment.isCancelled()).isTrue();
 			assertThat(enrollment.getCancelledAt()).isNotNull();
 			assertThat(enrollment.getCourse().getCapacity().getCurrent()).isZero();
+			Mockito.verify(enrollmentRepository, Mockito.times(1))
+				.findById(enrollmentId);
+			Mockito.verify(courseRepository, Mockito.times(1))
+				.findByIdForUpdate(enrollment.getCourse().getId());
+			Mockito.verify(enrollmentRepository, Mockito.times(1))
+				.findOldestWaitingByCourseIdForUpdate(enrollment.getCourse().getId());
+		}
+
+		@Test
+		void 수강_확정_취소를_하면_가장_오래된_웨이팅_수강_신청을_결제_대기_상태로_승격한다() {
+			// given
+			Long enrollmentId = 10L;
+			Long userId = 2L;
+			Course course = createOpenCourseWithCapacityOne(1L);
+			Enrollment enrollment = Enrollment.apply(course, createUser(userId));
+			enrollment.confirmPayment(PAID_AT);
+			Enrollment waitingEnrollment = Enrollment.apply(course, createUser(3L));
+			ReflectionTestUtils.setField(enrollment, "id", enrollmentId);
+			ReflectionTestUtils.setField(waitingEnrollment, "id", 11L);
+
+			Mockito.when(enrollmentRepository.findById(enrollmentId))
+				.thenReturn(Optional.of(enrollment));
+			Mockito.when(courseRepository.findByIdForUpdate(course.getId()))
+				.thenReturn(Optional.of(course));
+			Mockito.when(enrollmentRepository.findOldestWaitingByCourseIdForUpdate(course.getId()))
+				.thenReturn(Optional.of(waitingEnrollment));
+
+			// when
+			enrollmentService.cancelConfirm(enrollmentId, userId);
+
+			// then
+			assertAll(
+				() -> assertThat(enrollment.isCancelled()).isTrue(),
+				() -> assertThat(waitingEnrollment.isPending()).isTrue(),
+				() -> assertThat(course.getCapacity().getCurrent()).isEqualTo(1)
+			);
+			Mockito.verify(courseRepository, Mockito.times(1))
+				.findByIdForUpdate(course.getId());
+			Mockito.verify(enrollmentRepository, Mockito.times(1))
+				.findOldestWaitingByCourseIdForUpdate(course.getId());
 		}
 
 		@Test
@@ -328,6 +481,10 @@ class EnrollmentServiceTest {
 
 			Mockito.when(enrollmentRepository.findById(enrollmentId))
 				.thenReturn(Optional.of(enrollment));
+			Mockito.when(courseRepository.findByIdForUpdate(enrollment.getCourse().getId()))
+				.thenReturn(Optional.of(enrollment.getCourse()));
+			Mockito.when(enrollmentRepository.findOldestWaitingByCourseIdForUpdate(enrollment.getCourse().getId()))
+				.thenReturn(Optional.empty());
 
 			// when
 			enrollmentService.cancelConfirm(enrollmentId, userId);
@@ -335,6 +492,8 @@ class EnrollmentServiceTest {
 			// then
 			Mockito.verify(enrollmentRepository, Mockito.times(1))
 				.findById(enrollmentId);
+			Mockito.verify(courseRepository, Mockito.times(1))
+				.findByIdForUpdate(enrollment.getCourse().getId());
 		}
 
 		@Test
@@ -365,6 +524,76 @@ class EnrollmentServiceTest {
 			// when & then
 			assertThatThrownBy(() -> enrollmentService.cancelConfirm(enrollmentId, userId))
 				.isInstanceOf(NotFoundException.class);
+		}
+	}
+
+	@Nested
+	@DisplayName("웨이팅 취소")
+	class CancelWaitingEnrollment {
+		@Test
+		void 본인의_웨이팅_상태_수강_신청을_취소한다() {
+			// given
+			Long enrollmentId = 10L;
+			Long userId = 2L;
+			Enrollment enrollment = createWaitingEnrollment(enrollmentId, userId);
+
+			Mockito.when(enrollmentRepository.findById(enrollmentId))
+				.thenReturn(Optional.of(enrollment));
+
+			// when
+			enrollmentService.cancelWaiting(enrollmentId, userId);
+
+			// then
+			assertThat(enrollment.isWaiting()).isTrue();
+			Mockito.verify(enrollmentRepository, Mockito.times(1))
+				.findById(enrollmentId);
+			Mockito.verify(enrollmentRepository, Mockito.times(1))
+				.deleteById(enrollmentId);
+		}
+
+		@Test
+		void 본인의_수강_신청이_아니라면_웨이팅을_취소할_수_없다() {
+			// given
+			Long enrollmentId = 10L;
+			Long userId = 2L;
+			Long otherUserId = 3L;
+			Enrollment enrollment = createWaitingEnrollment(enrollmentId, userId);
+
+			Mockito.when(enrollmentRepository.findById(enrollmentId))
+				.thenReturn(Optional.of(enrollment));
+
+			// when & then
+			assertThatThrownBy(() -> enrollmentService.cancelWaiting(enrollmentId, otherUserId))
+				.isInstanceOf(ForbiddenException.class);
+		}
+
+		@Test
+		void 수강_신청이_없으면_웨이팅을_취소할_수_없다() {
+			// given
+			Long enrollmentId = 10L;
+			Long userId = 2L;
+
+			Mockito.when(enrollmentRepository.findById(enrollmentId))
+				.thenReturn(Optional.empty());
+
+			// when & then
+			assertThatThrownBy(() -> enrollmentService.cancelWaiting(enrollmentId, userId))
+				.isInstanceOf(NotFoundException.class);
+		}
+
+		@Test
+		void 결제_대기_상태의_수강_신청은_웨이팅_취소할_수_없다() {
+			// given
+			Long enrollmentId = 10L;
+			Long userId = 2L;
+			Enrollment enrollment = createPendingEnrollment(enrollmentId, userId);
+
+			Mockito.when(enrollmentRepository.findById(enrollmentId))
+				.thenReturn(Optional.of(enrollment));
+
+			// when & then
+			assertThatThrownBy(() -> enrollmentService.cancelWaiting(enrollmentId, userId))
+				.isInstanceOf(ConflictException.class);
 		}
 	}
 
@@ -478,6 +707,14 @@ class EnrollmentServiceTest {
 		return enrollment;
 	}
 
+	private Enrollment createWaitingEnrollment(Long enrollmentId, Long userId) {
+		Course course = createOpenCourseWithCapacityOne(1L);
+		Enrollment.apply(course, createUser(999L));
+		Enrollment enrollment = Enrollment.apply(course, createUser(userId));
+		ReflectionTestUtils.setField(enrollment, "id", enrollmentId);
+		return enrollment;
+	}
+
 	private Enrollment createConfirmedEnrollment(
 		Long enrollmentId,
 		Long userId,
@@ -496,6 +733,22 @@ class EnrollmentServiceTest {
 
 	private Course createOpenCourse(Long courseId, User creator, CourseFixture courseFixture) {
 		Course course = courseFixture.create(creator);
+		course.open();
+		ReflectionTestUtils.setField(course, "id", courseId);
+		return course;
+	}
+
+	private Course createOpenCourseWithCapacityOne(Long courseId) {
+		User creator = createCreator(1L, UserFixture.USER_FIXTURE_1);
+		Course course = Course.of(
+			"정원 1명 강의",
+			"웨이팅 테스트용 강의입니다.",
+			100_000,
+			new Capacity(1),
+			LocalDate.of(2026, 6, 1),
+			LocalDate.of(2026, 6, 30),
+			creator
+		);
 		course.open();
 		ReflectionTestUtils.setField(course, "id", courseId);
 		return course;

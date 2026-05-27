@@ -1,6 +1,7 @@
 package com.example.academy.course.domain;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatCode;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import java.time.LocalDate;
@@ -220,12 +221,34 @@ class CourseTest {
 			Course course = CourseFixture.COURSE_FIXTURE_1.create(creator);
 
 			//when & then
-			assertThatThrownBy(course::increaseEnrollmentCount)
+			assertThatThrownBy(course::validateCanEnroll)
 				.isInstanceOf(ConflictException.class);
 		}
 
 		@Test
-		void 정원이_가득_찼다면_신청할_수_없다() {
+		void 모집_중이라면_정원이_가득_차도_수강_신청_검증은_통과한다() {
+			//given
+			User creator = UserFixture.USER_FIXTURE_1.createCreator();
+			Course course = Course.of(
+				"강의 제목",
+				"강의 설명",
+				100_000,
+				new Capacity(1),
+				LocalDate.of(2026, 8, 1),
+				LocalDate.of(2026, 8, 31),
+				creator
+			);
+			course.open();
+			course.increaseEnrollmentCount();
+
+			//when & then
+			assertThat(course.isFull()).isTrue();
+			assertThatCode(course::validateCanEnroll)
+				.doesNotThrowAnyException();
+		}
+
+		@Test
+		void 정원이_가득_찼다면_신청_인원을_증가시킬_수_없다() {
 			//given
 			User creator = UserFixture.USER_FIXTURE_1.createCreator();
 			Course course = Course.of(
