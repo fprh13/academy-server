@@ -27,16 +27,16 @@
 
 - `common`: 공통 응답, 예외 처리, 웹 설정, 보안 설정
 - `identity`: 회원 가입, 로그인, 인증 사용자 조회
-- `course`: 강의 등록, 강의 상세 조회, 강의 목록 조회
-- `enrollment`: 수강 신청, 수강 확정
+- `course`: 강의 등록, 강의 상세 조회, 강의 목록 조회, 강의별 수강생 목록 조회
+- `enrollment`: 수강 신청, 수강 확정, 수강 취소, 웨이팅 취소, 내 신청 목록 조회
 
 현재 코드 기준으로 `identity`, `course`, `enrollment`는 모두 controller, application service, domain, infrastructure, 테스트가 연결된 상태입니다.
 
 다만 `docs/requirements.md`에 있는 전체 범위가 모두 끝난 것은 아닙니다.
 
 - `course`: 상태 전이 API는 아직 열려 있지 않습니다.
-- `enrollment`: 취소, 내 신청 목록 조회, 대기열, 크리에이터용 수강생 목록 조회는 아직 구현 범위로 남아 있습니다.
-- 정원 동시성 처리 전략도 별도 강화가 필요한 상태입니다.
+- 운영 환경 기준의 정원 동시성 전략 검증은 여전히 별도 확인이 필요합니다.
+- 외부 결제 시스템 연동은 아직 없고 현재는 상태 변경으로 단순화되어 있습니다.
 
 ---
 
@@ -130,6 +130,7 @@
 
 - 강의 등록
 - 강의 목록/상세 조회
+- 강의별 수강생 목록 조회
 - 가격, 정원, 수강 기간 관리
 - 현재 신청 인원 집계
 - 강의 생성 시 강사 권한 검증
@@ -158,10 +159,13 @@
 현재 구현된 책임:
 
 - 수강 신청 생성
-- 신청 상태 전이 (`PENDING -> CONFIRMED -> CANCELLED`)
+- 신청 상태 전이 (`PENDING`, `WAITING`, `CONFIRMED`, `CANCELLED`)
 - 결제 확정 처리
-- 정원 초과 방지 정책 적용
-- 본인 수강 신청만 확정 가능한 접근 제어
+- 수강 취소와 웨이팅 취소
+- 취소 시 가장 오래된 웨이팅 신청 승격
+- 내 수강 신청 목록 조회와 상태 필터링
+- 정원 초과 시 웨이팅 전환과 동시성 제어
+- 본인 수강 신청만 변경 가능한 접근 제어
 
 아키텍처 원칙:
 
@@ -172,14 +176,14 @@
 현재 코드에서 확인되는 핵심 개념:
 
 - `Enrollment`: 수강 신청 어그리게이트
-- `EnrollmentState`: `PENDING`, `CONFIRMED`, `CANCELLED`
+- `EnrollmentState`: `PENDING`, `WAITING`, `CONFIRMED`, `CANCELLED`
 - `EnrollmentCancelPolicy`: 결제 후 7일 취소 가능 규칙
 - `EnrollmentRepository`: 수강 신청 저장소 인터페이스
 
 주의:
 
-- 취소 규칙 자체는 도메인에 들어가 있지만, 현재 application/presentation 계층에는 취소 유스케이스가 아직 연결되지 않았습니다.
-- 현재 application service는 `apply`, `confirm`만 제공합니다.
+- 취소 시 좌석 복구와 웨이팅 승격은 `EnrollmentService`가 트랜잭션 안에서 함께 조정합니다.
+- 신청과 취소 경로에서는 `CourseRepository.findByIdForUpdate()`와 웨이팅 조회 잠금을 사용합니다.
 
 ---
 
@@ -309,7 +313,7 @@ Client
 
 - 강사 여부 검증은 `Course` 생성 시점에 도메인에서 수행합니다.
 - 강의 생성 직후 상태는 `DRAFT`입니다.
-- 현재 API는 강의 생성, 상세 조회, 목록 조회까지 연결되어 있습니다.
+- 현재 API는 강의 생성, 상세 조회, 목록 조회, 강의별 수강생 목록 조회까지 연결되어 있습니다.
 
 ### 5. 수강 신청
 
@@ -319,18 +323,18 @@ Client
 Client
   -> EnrollmentController.apply()
   -> EnrollmentService.apply()
-  -> CourseRepository.findById()
+  -> CourseRepository.findByIdForUpdate()
   -> UserRepository.findById()
   -> Enrollment.apply(course, user)
-  -> course.increaseEnrollmentCount()
   -> EnrollmentRepository.save()
 ```
 
 의미:
 
-- 정원 차감은 별도 서비스가 아니라 `Enrollment` 생성 과정에서 `Course` 어그리게이트와 협력해 처리합니다.
+- 정원이 남아 있으면 `Enrollment.apply()`가 `PENDING` 신청을 만들면서 정원을 증가시킵니다.
+- 정원이 가득 찼으면 예외 대신 `WAITING` 상태 수강 신청을 생성합니다.
 - 신청 가능 여부는 `Course.validateCanEnroll()` 규칙에 의해 보장됩니다.
-- 현재 구현은 정원 초과를 도메인 규칙으로 막지만, 마지막 좌석 동시성에 대한 별도 락 전략은 아직 없습니다.
+- 현재 구현은 강의 조회 시 비관적 락을 사용해 마지막 좌석 경쟁을 직렬화합니다.
 
 ### 6. 수강 확정
 
@@ -341,7 +345,7 @@ Client
   -> EnrollmentController.confirm()
   -> EnrollmentService.confirm()
   -> EnrollmentRepository.findById()
-  -> enrollment.canWrite(userId)
+  -> enrollment.canAccess(userId)
   -> enrollment.confirmPayment(now)
 ```
 
@@ -349,6 +353,28 @@ Client
 
 - 수강 확정은 본인 신청에 대해서만 가능합니다.
 - 결제 연동은 아직 없고, 현재는 상태 변경과 `paidAt` 기록으로 표현합니다.
+
+### 7. 수강 취소와 웨이팅 승격
+
+현재 수강 취소와 웨이팅 승격 흐름은 아래와 같습니다.
+
+```text
+Client
+  -> EnrollmentController.cancel() / refund() / wait-cancel()
+  -> EnrollmentService.cancel() / cancelConfirm() / cancelWaiting()
+  -> EnrollmentRepository.findById()
+  -> 접근 권한 검증
+  -> CourseRepository.findByIdForUpdate()   // cancel, refund 경로
+  -> enrollment.cancelApplication() 또는 enrollment.cancelConfirmed()
+  -> EnrollmentRepository.findOldestWaitingByCourseIdForUpdate()
+  -> waitingEnrollment.promoteToPending()
+```
+
+의미:
+
+- `PENDING` 취소와 `CONFIRMED` 취소는 좌석을 복구한 뒤 가장 오래된 웨이팅 신청을 자동 승격합니다.
+- 웨이팅 취소는 좌석 수를 건드리지 않고 본인 웨이팅 신청만 삭제합니다.
+- 웨이팅 승격 순서는 가장 오래 생성된 신청 기준입니다.
 
 ---
 
@@ -445,32 +471,17 @@ Client
 - 강의 상태 전이
 - 필요하다면 강의 수정/삭제 정책
 
-### `enrollment`에서 추가 구현이 필요한 범위
+### `enrollment`에서 추가로 검토할 수 있는 범위
 
-- 수강 취소 API
-- 취소 가능 기간 검증을 사용하는 취소 유스케이스
-- 내 신청 목록 조회
-- 강의별 수강생 목록 조회
-- 대기열
-- 페이지네이션이 포함된 조회 모델
+- 운영 DB 기준의 락 전략 검증과 인덱스 보강
+- 외부 결제 시스템 연동 시 결제 확정/취소 흐름 재설계
+- 필요 시 웨이팅 알림, 만료, 운영 정책 같은 후속 유스케이스
 
-### 컨텍스트 협력에서 먼저 결정할 것
+### 컨텍스트 협력에서 계속 검토할 것
 
-- 정원을 어디서 최종 차감할지
-- 마지막 좌석 동시성 충돌을 어떤 방식으로 막을지
-- 취소 시 정원 복구를 어떤 트랜잭션 경계에서 처리할지
-
-실무적으로 가장 중요한 쟁점은 정원 동시성입니다.
-
-수강 신청 생성 시점에 정원 검증만 하고 저장을 분리하면 마지막 좌석 경쟁에서 정원 초과가 발생할 수 있습니다.
-
-현재 구현에는 별도 락이나 원자적 재고 차감 전략이 없으므로, 아래 중 하나를 명확히 선택해 보강해야 합니다.
-
-- DB 락 기반 직렬화
-- 원자적 업데이트 쿼리 기반 처리
-- 별도 좌석 재고 모델 도입
-
-이 선택은 구현 전에 문서나 설계에서 먼저 확정하는 것이 좋습니다.
+- 현재의 비관적 락 전략이 운영 데이터베이스와 트래픽 특성에서도 충분한지
+- 취소와 웨이팅 승격을 한 트랜잭션으로 묶는 현재 방식이 운영 정책과 맞는지
+- 별도 좌석 재고 모델이나 이벤트 기반 후처리가 필요한 시점이 언제인지
 
 ---
 
