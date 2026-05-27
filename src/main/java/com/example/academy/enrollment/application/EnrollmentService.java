@@ -60,7 +60,11 @@ public class EnrollmentService {
 			throw new ForbiddenException();
 		}
 
+		Course course = courseRepository.findByIdForUpdate(enrollment.getCourse().getId())
+			.orElseThrow(() -> new NotFoundException(Course.class));
+
 		enrollment.cancelApplication();
+		promoteOldestWaitingEnrollment(course);
 
 		enrollmentRepository.deleteById(enrollmentId);
 	}
@@ -75,8 +79,13 @@ public class EnrollmentService {
 			throw new ForbiddenException();
 		}
 
+		Course course = courseRepository.findByIdForUpdate(enrollment.getCourse().getId())
+			.orElseThrow(() -> new NotFoundException(Course.class));
+
 		LocalDateTime now = LocalDateTime.now();
 		enrollment.cancelConfirmed(now);
+
+		promoteOldestWaitingEnrollment(course);
 	}
 
 	public PagingResponse<EnrollmentInfoResponse> gets(PagingRequest request, String state, Long userId) {
@@ -84,5 +93,13 @@ public class EnrollmentService {
 			enrollmentRepository.findPageByUserIdAndStateIn(userId, state, request.page(), request.size(), request.sort())
 				.map(EnrollmentInfoResponse::from)
 		);
+	}
+
+	private void promoteOldestWaitingEnrollment(Course course) {
+		enrollmentRepository.findOldestWaitingByCourseIdForUpdate(course.getId())
+			.ifPresent(waitingEnrollment -> {
+				waitingEnrollment.promoteToPending();
+				course.increaseEnrollmentCount();
+			});
 	}
 }

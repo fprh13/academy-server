@@ -20,6 +20,7 @@ public class EnrollmentRepositoryImpl implements EnrollmentRepository {
 	private static final String STATE_CANCEL = "cancelled";
 	private static final String STATE_CONFIRM = "confirmed";
 	private static final String SORT_CLASSMATE = "user.name";
+	private static final String SORT_CREATED = "createAt";
 
 	private final JpaEnrollmentRepository jpaEnrollmentRepository;
 
@@ -67,5 +68,14 @@ public class EnrollmentRepositoryImpl implements EnrollmentRepository {
 			EnrollmentState.CONFIRMED,
 			PageRequest.of(page, size, Sort.by(SORT_CLASSMATE))
 		);
+	}
+
+	@Override
+	public Optional<Enrollment> findOldestWaitingByCourseIdForUpdate(Long courseId) {
+		return jpaEnrollmentRepository.findOldestWaitingByCourseIdAndStateForUpdate(
+			courseId,
+			EnrollmentState.WAITING,
+			PageRequest.of(0, 1, Sort.by(Sort.Direction.ASC, SORT_CREATED))
+		).stream().findFirst();
 	}
 }

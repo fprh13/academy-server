@@ -302,6 +302,10 @@ class EnrollmentServiceTest {
 
 			Mockito.when(enrollmentRepository.findById(enrollmentId))
 				.thenReturn(Optional.of(enrollment));
+			Mockito.when(courseRepository.findByIdForUpdate(enrollment.getCourse().getId()))
+				.thenReturn(Optional.of(enrollment.getCourse()));
+			Mockito.when(enrollmentRepository.findOldestWaitingByCourseIdForUpdate(enrollment.getCourse().getId()))
+				.thenReturn(Optional.empty());
 
 			// when
 			enrollmentService.cancel(enrollmentId, userId);
@@ -310,6 +314,46 @@ class EnrollmentServiceTest {
 			assertThat(enrollment.isPending()).isTrue();
 			assertThat(enrollment.getCancelledAt()).isNull();
 			assertThat(enrollment.getCourse().getCapacity().getCurrent()).isZero();
+			Mockito.verify(enrollmentRepository, Mockito.times(1))
+				.findById(enrollmentId);
+			Mockito.verify(courseRepository, Mockito.times(1))
+				.findByIdForUpdate(enrollment.getCourse().getId());
+			Mockito.verify(enrollmentRepository, Mockito.times(1))
+				.findOldestWaitingByCourseIdForUpdate(enrollment.getCourse().getId());
+			Mockito.verify(enrollmentRepository, Mockito.times(1))
+				.deleteById(enrollmentId);
+		}
+
+		@Test
+		void 수강_신청을_취소하면_가장_오래된_웨이팅_수강_신청을_결제_대기_상태로_승격한다() {
+			// given
+			Long enrollmentId = 10L;
+			Long userId = 2L;
+			Course course = createOpenCourseWithCapacityOne(1L);
+			Enrollment enrollment = Enrollment.apply(course, createUser(userId));
+			Enrollment waitingEnrollment = Enrollment.apply(course, createUser(3L));
+			ReflectionTestUtils.setField(enrollment, "id", enrollmentId);
+			ReflectionTestUtils.setField(waitingEnrollment, "id", 11L);
+
+			Mockito.when(enrollmentRepository.findById(enrollmentId))
+				.thenReturn(Optional.of(enrollment));
+			Mockito.when(courseRepository.findByIdForUpdate(course.getId()))
+				.thenReturn(Optional.of(course));
+			Mockito.when(enrollmentRepository.findOldestWaitingByCourseIdForUpdate(course.getId()))
+				.thenReturn(Optional.of(waitingEnrollment));
+
+			// when
+			enrollmentService.cancel(enrollmentId, userId);
+
+			// then
+			assertAll(
+				() -> assertThat(waitingEnrollment.isPending()).isTrue(),
+				() -> assertThat(course.getCapacity().getCurrent()).isEqualTo(1)
+			);
+			Mockito.verify(courseRepository, Mockito.times(1))
+				.findByIdForUpdate(course.getId());
+			Mockito.verify(enrollmentRepository, Mockito.times(1))
+				.findOldestWaitingByCourseIdForUpdate(course.getId());
 			Mockito.verify(enrollmentRepository, Mockito.times(1))
 				.deleteById(enrollmentId);
 		}
@@ -353,6 +397,8 @@ class EnrollmentServiceTest {
 
 			Mockito.when(enrollmentRepository.findById(enrollmentId))
 				.thenReturn(Optional.of(enrollment));
+			Mockito.when(courseRepository.findByIdForUpdate(enrollment.getCourse().getId()))
+				.thenReturn(Optional.of(enrollment.getCourse()));
 
 			// when & then
 			assertThatThrownBy(() -> enrollmentService.cancel(enrollmentId, userId))
@@ -372,6 +418,10 @@ class EnrollmentServiceTest {
 
 			Mockito.when(enrollmentRepository.findById(enrollmentId))
 				.thenReturn(Optional.of(enrollment));
+			Mockito.when(courseRepository.findByIdForUpdate(enrollment.getCourse().getId()))
+				.thenReturn(Optional.of(enrollment.getCourse()));
+			Mockito.when(enrollmentRepository.findOldestWaitingByCourseIdForUpdate(enrollment.getCourse().getId()))
+				.thenReturn(Optional.empty());
 
 			// when
 			enrollmentService.cancelConfirm(enrollmentId, userId);
@@ -380,6 +430,46 @@ class EnrollmentServiceTest {
 			assertThat(enrollment.isCancelled()).isTrue();
 			assertThat(enrollment.getCancelledAt()).isNotNull();
 			assertThat(enrollment.getCourse().getCapacity().getCurrent()).isZero();
+			Mockito.verify(enrollmentRepository, Mockito.times(1))
+				.findById(enrollmentId);
+			Mockito.verify(courseRepository, Mockito.times(1))
+				.findByIdForUpdate(enrollment.getCourse().getId());
+			Mockito.verify(enrollmentRepository, Mockito.times(1))
+				.findOldestWaitingByCourseIdForUpdate(enrollment.getCourse().getId());
+		}
+
+		@Test
+		void 수강_확정_취소를_하면_가장_오래된_웨이팅_수강_신청을_결제_대기_상태로_승격한다() {
+			// given
+			Long enrollmentId = 10L;
+			Long userId = 2L;
+			Course course = createOpenCourseWithCapacityOne(1L);
+			Enrollment enrollment = Enrollment.apply(course, createUser(userId));
+			enrollment.confirmPayment(PAID_AT);
+			Enrollment waitingEnrollment = Enrollment.apply(course, createUser(3L));
+			ReflectionTestUtils.setField(enrollment, "id", enrollmentId);
+			ReflectionTestUtils.setField(waitingEnrollment, "id", 11L);
+
+			Mockito.when(enrollmentRepository.findById(enrollmentId))
+				.thenReturn(Optional.of(enrollment));
+			Mockito.when(courseRepository.findByIdForUpdate(course.getId()))
+				.thenReturn(Optional.of(course));
+			Mockito.when(enrollmentRepository.findOldestWaitingByCourseIdForUpdate(course.getId()))
+				.thenReturn(Optional.of(waitingEnrollment));
+
+			// when
+			enrollmentService.cancelConfirm(enrollmentId, userId);
+
+			// then
+			assertAll(
+				() -> assertThat(enrollment.isCancelled()).isTrue(),
+				() -> assertThat(waitingEnrollment.isPending()).isTrue(),
+				() -> assertThat(course.getCapacity().getCurrent()).isEqualTo(1)
+			);
+			Mockito.verify(courseRepository, Mockito.times(1))
+				.findByIdForUpdate(course.getId());
+			Mockito.verify(enrollmentRepository, Mockito.times(1))
+				.findOldestWaitingByCourseIdForUpdate(course.getId());
 		}
 
 		@Test
@@ -391,6 +481,10 @@ class EnrollmentServiceTest {
 
 			Mockito.when(enrollmentRepository.findById(enrollmentId))
 				.thenReturn(Optional.of(enrollment));
+			Mockito.when(courseRepository.findByIdForUpdate(enrollment.getCourse().getId()))
+				.thenReturn(Optional.of(enrollment.getCourse()));
+			Mockito.when(enrollmentRepository.findOldestWaitingByCourseIdForUpdate(enrollment.getCourse().getId()))
+				.thenReturn(Optional.empty());
 
 			// when
 			enrollmentService.cancelConfirm(enrollmentId, userId);
@@ -398,6 +492,8 @@ class EnrollmentServiceTest {
 			// then
 			Mockito.verify(enrollmentRepository, Mockito.times(1))
 				.findById(enrollmentId);
+			Mockito.verify(courseRepository, Mockito.times(1))
+				.findByIdForUpdate(enrollment.getCourse().getId());
 		}
 
 		@Test

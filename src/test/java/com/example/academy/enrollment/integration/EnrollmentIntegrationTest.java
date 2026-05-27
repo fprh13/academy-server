@@ -11,6 +11,7 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.test.util.ReflectionTestUtils;
 
 import com.example.academy.common.presentation.dto.PagingRequest;
 import com.example.academy.common.presentation.dto.PagingResponse;
@@ -227,6 +228,47 @@ class EnrollmentIntegrationTest extends IntegrationSupportTest {
 		}
 
 		@Test
+		void 수강_신청을_취소하면_가장_오래된_웨이팅_수강_신청이_결제_대기_상태로_승격된다() {
+			// given
+			User creator = userRepository.save(UserFixture.USER_FIXTURE_1.createCreator());
+			Course course = createSavedOpenCourseWithCapacityOne(creator);
+
+			User firstUser = userRepository.save(UserFixture.USER_FIXTURE_2.create());
+			User secondUser = userRepository.save(UserFixture.USER_FIXTURE_3.create());
+			User thirdUser = userRepository.save(User.register("test4", "test4@1234", "test4@test.com", "김도"));
+
+			Enrollment pendingEnrollment = Enrollment.apply(course, firstUser);
+			ReflectionTestUtils.setField(pendingEnrollment, "createAt", LocalDateTime.of(2026, 6, 1, 9, 0));
+			enrollmentRepository.save(pendingEnrollment);
+
+			Enrollment oldestWaitingEnrollment = Enrollment.apply(course, secondUser);
+			ReflectionTestUtils.setField(oldestWaitingEnrollment, "createAt", LocalDateTime.of(2026, 6, 1, 9, 1));
+			enrollmentRepository.save(oldestWaitingEnrollment);
+
+			Enrollment latestWaitingEnrollment = Enrollment.apply(course, thirdUser);
+			ReflectionTestUtils.setField(latestWaitingEnrollment, "createAt", LocalDateTime.of(2026, 6, 1, 9, 2));
+			enrollmentRepository.save(latestWaitingEnrollment);
+
+			// when
+			enrollmentService.cancel(pendingEnrollment.getId(), firstUser.getId());
+
+			// then
+			Enrollment promotedEnrollment = enrollmentRepository.findById(oldestWaitingEnrollment.getId())
+				.orElseThrow(() -> new AssertionError("가장 오래된 웨이팅 신청이 저장되지 않았습니다."));
+			Enrollment waitingEnrollment = enrollmentRepository.findById(latestWaitingEnrollment.getId())
+				.orElseThrow(() -> new AssertionError("최신 웨이팅 신청이 저장되지 않았습니다."));
+			Course savedCourse = courseRepository.findById(course.getId())
+				.orElseThrow(() -> new AssertionError("강의가 저장되지 않았습니다."));
+
+			assertAll(
+				() -> assertThat(enrollmentRepository.findById(pendingEnrollment.getId())).isEmpty(),
+				() -> assertThat(promotedEnrollment.getState()).isEqualTo(EnrollmentState.PENDING),
+				() -> assertThat(waitingEnrollment.getState()).isEqualTo(EnrollmentState.WAITING),
+				() -> assertThat(savedCourse.getCapacity().getCurrent()).isEqualTo(1)
+			);
+		}
+
+		@Test
 		void 본인의_수강_신청이_아니라면_예외를_반환한다() {
 			// given
 			User creator = userRepository.save(UserFixture.USER_FIXTURE_1.createCreator());
@@ -278,6 +320,50 @@ class EnrollmentIntegrationTest extends IntegrationSupportTest {
 				() -> assertThat(savedEnrollment.getState()).isEqualTo(EnrollmentState.CANCELLED),
 				() -> assertThat(savedEnrollment.getCancelledAt()).isNotNull(),
 				() -> assertThat(savedCourse.getCapacity().getCurrent()).isZero()
+			);
+		}
+
+		@Test
+		void 수강_확정_취소를_하면_가장_오래된_웨이팅_수강_신청이_결제_대기_상태로_승격된다() {
+			// given
+			User creator = userRepository.save(UserFixture.USER_FIXTURE_1.createCreator());
+			Course course = createSavedOpenCourseWithCapacityOne(creator);
+
+			User firstUser = userRepository.save(UserFixture.USER_FIXTURE_2.create());
+			User secondUser = userRepository.save(UserFixture.USER_FIXTURE_3.create());
+			User thirdUser = userRepository.save(User.register("test5", "test5@1234", "test5@test.com", "박도"));
+
+			Enrollment confirmedEnrollment = Enrollment.apply(course, firstUser);
+			ReflectionTestUtils.setField(confirmedEnrollment, "createAt", LocalDateTime.of(2026, 6, 1, 9, 0));
+			confirmedEnrollment.confirmPayment(LocalDateTime.of(2026, 6, 1, 10, 0));
+			enrollmentRepository.save(confirmedEnrollment);
+
+			Enrollment oldestWaitingEnrollment = Enrollment.apply(course, secondUser);
+			ReflectionTestUtils.setField(oldestWaitingEnrollment, "createAt", LocalDateTime.of(2026, 6, 1, 9, 1));
+			enrollmentRepository.save(oldestWaitingEnrollment);
+
+			Enrollment latestWaitingEnrollment = Enrollment.apply(course, thirdUser);
+			ReflectionTestUtils.setField(latestWaitingEnrollment, "createAt", LocalDateTime.of(2026, 6, 1, 9, 2));
+			enrollmentRepository.save(latestWaitingEnrollment);
+
+			// when
+			enrollmentService.cancelConfirm(confirmedEnrollment.getId(), firstUser.getId());
+
+			// then
+			Enrollment savedConfirmedEnrollment = enrollmentRepository.findById(confirmedEnrollment.getId())
+				.orElseThrow(() -> new AssertionError("취소된 수강 신청이 저장되지 않았습니다."));
+			Enrollment promotedEnrollment = enrollmentRepository.findById(oldestWaitingEnrollment.getId())
+				.orElseThrow(() -> new AssertionError("가장 오래된 웨이팅 신청이 저장되지 않았습니다."));
+			Enrollment waitingEnrollment = enrollmentRepository.findById(latestWaitingEnrollment.getId())
+				.orElseThrow(() -> new AssertionError("최신 웨이팅 신청이 저장되지 않았습니다."));
+			Course savedCourse = courseRepository.findById(course.getId())
+				.orElseThrow(() -> new AssertionError("강의가 저장되지 않았습니다."));
+
+			assertAll(
+				() -> assertThat(savedConfirmedEnrollment.getState()).isEqualTo(EnrollmentState.CANCELLED),
+				() -> assertThat(promotedEnrollment.getState()).isEqualTo(EnrollmentState.PENDING),
+				() -> assertThat(waitingEnrollment.getState()).isEqualTo(EnrollmentState.WAITING),
+				() -> assertThat(savedCourse.getCapacity().getCurrent()).isEqualTo(1)
 			);
 		}
 

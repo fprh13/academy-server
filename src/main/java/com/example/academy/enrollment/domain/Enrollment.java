@@ -89,6 +89,10 @@ public class Enrollment extends AggregateRoot<Enrollment> implements AccessPolic
 		this.course.decreaseEnrollmentCount();
 	}
 
+	public void promoteToPending() {
+		this.state = EnrollmentState.PENDING;
+	}
+
 	public boolean isPending() {
 		return state == EnrollmentState.PENDING;
 	}
