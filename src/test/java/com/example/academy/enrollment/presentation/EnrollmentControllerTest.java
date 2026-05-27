@@ -718,15 +718,15 @@ class EnrollmentControllerTest extends RestDocsSupport {
 						.summary("수강 신청 목록 조회")
 						.description("## 수강 신청 목록 조회 기능 \n"
 							+ "### 사용법 \n"
-							+ "- 상태 조건과 페이지 조건트으로 본인의 수강 신청 목록을 조회합니다.\n"
+							+ "- 상태 조건과 페이지 조건으로 본인의 수강 신청 목록을 조회합니다.\n"
 							+ "- state를 생략하면 결제 대기, 결제 확정, 웨이팅 목록을 함께 조회합니다.\n"
 							+ "- state가 confirmed면 결제 확정 목록만 조회합니다.\n"
-							+ "- state가 confirmed면 결제 취소 목록만 조회합니다.\n"
+							+ "- state가 cancelled면 결제 취소 목록만 조회합니다.\n"
 							+ "- state가 waiting면 웨이팅 목록만 조회합니다.\n"
 						)
 						.queryParameters(
 							parameterWithName("state").description(
-									"수강 신청 상태 필터입니다. 생략하면 수강 대기 확정, 웨이팅만, confirmed면 확정 목록만, cancel이면 취소 목록만, waiting이면 웨이팅 목록만 조회합니다.")
+									"수강 신청 상태 필터입니다. 생략하면 수강 대기 확정, 웨이팅만, confirmed면 확정 목록만, cancelled이면 취소 목록만, waiting이면 웨이팅 목록만 조회합니다.")
 								.optional(),
 							parameterWithName("page").description("조회할 페이지 번호입니다. 1부터 시작합니다.").optional(),
 							parameterWithName("size").description("페이지 크기입니다. 기본값은 10입니다.").optional()
