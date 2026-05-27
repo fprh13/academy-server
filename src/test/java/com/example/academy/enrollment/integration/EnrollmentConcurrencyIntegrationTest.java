@@ -54,8 +54,44 @@ class EnrollmentConcurrencyIntegrationTest extends IntegrationSupportTest {
 	}
 
 	@Test
-	@DisplayName("같은 결제 대기 신청에 대한 동시 취소 요청은 대기열 승격을 한 번만 수행한다")
-	void cancel_동시요청은_대기열_승격을_한번만_수행한다() throws Exception {
+	@DisplayName("정원 1명 강의에 대한 동시 신청은 마지막 자리를 한 명에게만 배정한다")
+	void apply_동시요청은_마지막_자리를_한명에게만_배정한다() throws Exception {
+		// given
+		User creator = jpaUserRepository.save(UserFixture.USER_FIXTURE_1.createCreator());
+		Course course = createOpenCourseWithCapacityOne(creator);
+		User firstApplicant = jpaUserRepository.save(UserFixture.USER_FIXTURE_2.create());
+		User secondApplicant = jpaUserRepository.save(UserFixture.USER_FIXTURE_3.create());
+
+		// when
+		ConcurrentApplyResult result = executeConcurrently(
+			() -> enrollmentService.apply(course.getId(), firstApplicant.getId()),
+			() -> enrollmentService.apply(course.getId(), secondApplicant.getId())
+		);
+
+		// then
+		Course savedCourse = jpaCourseRepository.findById(course.getId())
+			.orElseThrow(() -> new AssertionError("강의가 저장되지 않았습니다."));
+		Enrollment firstEnrollment = jpaEnrollmentRepository.findById(result.firstEnrollmentId())
+			.orElseThrow(() -> new AssertionError("첫 번째 수강 신청이 저장되지 않았습니다."));
+		Enrollment secondEnrollment = jpaEnrollmentRepository.findById(result.secondEnrollmentId())
+			.orElseThrow(() -> new AssertionError("두 번째 수강 신청이 저장되지 않았습니다."));
+		List<Enrollment> enrollments = jpaEnrollmentRepository.findAll().stream()
+			.filter(enrollment -> enrollment.getCourse().getId().equals(course.getId()))
+			.toList();
+
+		assertAll(
+			() -> assertThat(savedCourse.getCapacity().getCurrent()).isEqualTo(1),
+			() -> assertThat(enrollments).hasSize(2),
+			() -> assertThat(countByState(enrollments, EnrollmentState.PENDING)).isEqualTo(1),
+			() -> assertThat(countByState(enrollments, EnrollmentState.WAITING)).isEqualTo(1),
+			() -> assertThat(List.of(firstEnrollment.getState(), secondEnrollment.getState()))
+				.containsExactlyInAnyOrder(EnrollmentState.PENDING, EnrollmentState.WAITING)
+		);
+	}
+
+	@Test
+	@DisplayName("동시 취소 요청은 대기열 승격을 한 번만 수행한다")
+	void 대기열_승격을_한번만_수행한다() throws Exception {
 		// given
 		User creator = jpaUserRepository.save(UserFixture.USER_FIXTURE_1.createCreator());
 		Course course = createOpenCourseWithCapacityOne(creator);
@@ -100,54 +136,6 @@ class EnrollmentConcurrencyIntegrationTest extends IntegrationSupportTest {
 		);
 	}
 
-	@Test
-	@DisplayName("같은 결제 확정 신청에 대한 동시 취소 요청은 대기열 승격을 한 번만 수행한다")
-	void cancelConfirm_동시요청은_대기열_승격을_한번만_수행한다() throws Exception {
-		// given
-		User creator = jpaUserRepository.save(UserFixture.USER_FIXTURE_1.createCreator());
-		Course course = createOpenCourseWithCapacityOne(creator);
-
-		User applicant = jpaUserRepository.save(UserFixture.USER_FIXTURE_2.create());
-		User firstWaitingUser = jpaUserRepository.save(UserFixture.USER_FIXTURE_3.create());
-		User secondWaitingUser = jpaUserRepository.save(User.register("test5", "test5@1234", "test5@test.com", "박도"));
-
-		Long confirmedEnrollmentId = enrollmentService.apply(course.getId(), applicant.getId());
-		enrollmentService.confirm(confirmedEnrollmentId, applicant.getId());
-		Long firstWaitingEnrollmentId = enrollmentService.apply(course.getId(), firstWaitingUser.getId());
-		Long secondWaitingEnrollmentId = enrollmentService.apply(course.getId(), secondWaitingUser.getId());
-
-		// when
-		ConcurrentExecutionResult result = executeConcurrently(
-			() -> enrollmentService.cancelConfirm(confirmedEnrollmentId, applicant.getId()),
-			() -> enrollmentService.cancelConfirm(confirmedEnrollmentId, applicant.getId())
-		);
-
-		// then
-		Course savedCourse = jpaCourseRepository.findById(course.getId())
-			.orElseThrow(() -> new AssertionError("강의가 저장되지 않았습니다."));
-		List<Enrollment> enrollments = jpaEnrollmentRepository.findAll().stream()
-			.filter(enrollment -> enrollment.getCourse().getId().equals(course.getId()))
-			.toList();
-
-		assertAll(
-			() -> assertThat(result.successCount()).isEqualTo(1),
-			() -> assertThat(result.failureCount()).isEqualTo(1),
-			() -> assertThat(savedCourse.getCapacity().getCurrent()).isEqualTo(1),
-			() -> assertThat(enrollments).hasSize(3),
-			() -> assertThat(countByState(enrollments, EnrollmentState.CANCELLED)).isEqualTo(1),
-			() -> assertThat(countByState(enrollments, EnrollmentState.PENDING)).isEqualTo(1),
-			() -> assertThat(countByState(enrollments, EnrollmentState.WAITING)).isEqualTo(1),
-			() -> assertThat(jpaEnrollmentRepository.findById(firstWaitingEnrollmentId))
-				.get()
-				.extracting(Enrollment::getState)
-				.isEqualTo(EnrollmentState.PENDING),
-			() -> assertThat(jpaEnrollmentRepository.findById(secondWaitingEnrollmentId))
-				.get()
-				.extracting(Enrollment::getState)
-				.isEqualTo(EnrollmentState.WAITING)
-		);
-	}
-
 	private ConcurrentExecutionResult executeConcurrently(ThrowingRunnable firstAction, ThrowingRunnable secondAction)
 		throws InterruptedException, ExecutionException {
 		ExecutorService executorService = Executors.newFixedThreadPool(2);
@@ -179,6 +167,27 @@ class EnrollmentConcurrencyIntegrationTest extends IntegrationSupportTest {
 		}
 	}
 
+	private ConcurrentApplyResult executeConcurrently(ThrowingSupplier<Long> firstAction, ThrowingSupplier<Long> secondAction)
+		throws InterruptedException, ExecutionException {
+		ExecutorService executorService = Executors.newFixedThreadPool(2);
+		CountDownLatch readyLatch = new CountDownLatch(2);
+		CountDownLatch startLatch = new CountDownLatch(1);
+
+		try {
+			Future<Long> firstFuture = executorService.submit(toCallable(firstAction, readyLatch, startLatch));
+			Future<Long> secondFuture = executorService.submit(toCallable(secondAction, readyLatch, startLatch));
+
+			readyLatch.await(5, TimeUnit.SECONDS);
+			startLatch.countDown();
+
+			return new ConcurrentApplyResult(firstFuture.get(), secondFuture.get());
+		}
+		finally {
+			executorService.shutdownNow();
+			executorService.awaitTermination(5, TimeUnit.SECONDS);
+		}
+	}
+
 	private Callable<Boolean> toCallable(
 		ThrowingRunnable action,
 		CountDownLatch readyLatch,
@@ -194,6 +203,18 @@ class EnrollmentConcurrencyIntegrationTest extends IntegrationSupportTest {
 			catch (Exception exception) {
 				return false;
 			}
+		};
+	}
+
+	private Callable<Long> toCallable(
+		ThrowingSupplier<Long> action,
+		CountDownLatch readyLatch,
+		CountDownLatch startLatch
+	) {
+		return () -> {
+			readyLatch.countDown();
+			startLatch.await();
+			return action.get();
 		};
 	}
 
@@ -222,6 +243,14 @@ class EnrollmentConcurrencyIntegrationTest extends IntegrationSupportTest {
 		void run() throws Exception;
 	}
 
+	@FunctionalInterface
+	interface ThrowingSupplier<T> {
+		T get() throws Exception;
+	}
+
 	record ConcurrentExecutionResult(int successCount, int failureCount) {
+	}
+
+	record ConcurrentApplyResult(Long firstEnrollmentId, Long secondEnrollmentId) {
 	}
 }

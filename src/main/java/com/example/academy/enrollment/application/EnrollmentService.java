@@ -30,7 +30,7 @@ public class EnrollmentService {
 
 	@Transactional
 	public Long apply(Long courseId, Long userId) {
-		Course course = courseRepository.findById(courseId)
+		Course course = courseRepository.findByIdForUpdate(courseId)
 			.orElseThrow(() -> new NotFoundException(Course.class));
 		User user = userRepository.findById(userId)
 			.orElseThrow(() -> new NotFoundException(User.class));

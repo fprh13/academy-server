@@ -115,18 +115,21 @@ class EnrollmentIntegrationTest extends IntegrationSupportTest {
 			User secondUser = userRepository.save(UserFixture.USER_FIXTURE_3.create());
 			Course course = createSavedOpenCourseWithCapacityOne(creator);
 
-			enrollmentService.apply(course.getId(), firstUser.getId());
+			Long firstEnrollmentId = enrollmentService.apply(course.getId(), firstUser.getId());
 
 			// when
 			Long waitingEnrollmentId = enrollmentService.apply(course.getId(), secondUser.getId());
 
 			// then
+			Enrollment firstEnrollment = enrollmentRepository.findById(firstEnrollmentId)
+				.orElseThrow(() -> new AssertionError("첫 번째 수강 신청이 저장되지 않았습니다."));
 			Enrollment waitingEnrollment = enrollmentRepository.findById(waitingEnrollmentId)
 				.orElseThrow(() -> new AssertionError("웨이팅 수강 신청이 저장되지 않았습니다."));
 			Course savedCourse = courseRepository.findById(course.getId())
 				.orElseThrow(() -> new AssertionError("강의가 저장되지 않았습니다."));
 
 			assertAll(
+				() -> assertThat(firstEnrollment.getState()).isEqualTo(EnrollmentState.PENDING),
 				() -> assertThat(waitingEnrollment.getState()).isEqualTo(EnrollmentState.WAITING),
 				() -> assertThat(waitingEnrollment.getUser().getId()).isEqualTo(secondUser.getId()),
 				() -> assertThat(savedCourse.getCapacity().getCurrent()).isEqualTo(1)

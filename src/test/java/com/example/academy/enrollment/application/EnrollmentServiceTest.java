@@ -65,7 +65,7 @@ class EnrollmentServiceTest {
 			Course course = createOpenCourse(1L);
 			User user = createUser(2L);
 
-			Mockito.when(courseRepository.findById(course.getId()))
+			Mockito.when(courseRepository.findByIdForUpdate(course.getId()))
 				.thenReturn(Optional.of(course));
 			Mockito.when(userRepository.findById(user.getId()))
 				.thenReturn(Optional.of(user));
@@ -89,7 +89,7 @@ class EnrollmentServiceTest {
 			Course course = createOpenCourse(1L);
 			User user = createUser(2L);
 
-			Mockito.when(courseRepository.findById(course.getId()))
+			Mockito.when(courseRepository.findByIdForUpdate(course.getId()))
 				.thenReturn(Optional.of(course));
 			Mockito.when(userRepository.findById(user.getId()))
 				.thenReturn(Optional.of(user));
@@ -109,7 +109,7 @@ class EnrollmentServiceTest {
 			Course course = createOpenCourse(1L);
 			User user = createUser(2L);
 
-			Mockito.when(courseRepository.findById(course.getId()))
+			Mockito.when(courseRepository.findByIdForUpdate(course.getId()))
 				.thenReturn(Optional.of(course));
 			Mockito.when(userRepository.findById(user.getId()))
 				.thenReturn(Optional.of(user));
@@ -121,7 +121,7 @@ class EnrollmentServiceTest {
 
 			// then
 			Mockito.verify(courseRepository, Mockito.times(1))
-				.findById(course.getId());
+				.findByIdForUpdate(course.getId());
 		}
 
 		@Test
@@ -130,7 +130,7 @@ class EnrollmentServiceTest {
 			Course course = createOpenCourse(1L);
 			User user = createUser(2L);
 
-			Mockito.when(courseRepository.findById(course.getId()))
+			Mockito.when(courseRepository.findByIdForUpdate(course.getId()))
 				.thenReturn(Optional.of(course));
 			Mockito.when(userRepository.findById(user.getId()))
 				.thenReturn(Optional.of(user));
@@ -151,7 +151,7 @@ class EnrollmentServiceTest {
 			Course course = createOpenCourse(1L);
 			User user = createUser(2L);
 
-			Mockito.when(courseRepository.findById(course.getId()))
+			Mockito.when(courseRepository.findByIdForUpdate(course.getId()))
 				.thenReturn(Optional.of(course));
 			Mockito.when(userRepository.findById(user.getId()))
 				.thenReturn(Optional.of(user));
@@ -180,7 +180,7 @@ class EnrollmentServiceTest {
 			User secondUser = createUser(3L);
 			Enrollment.apply(course, firstUser);
 
-			Mockito.when(courseRepository.findById(course.getId()))
+			Mockito.when(courseRepository.findByIdForUpdate(course.getId()))
 				.thenReturn(Optional.of(course));
 			Mockito.when(userRepository.findById(secondUser.getId()))
 				.thenReturn(Optional.of(secondUser));
