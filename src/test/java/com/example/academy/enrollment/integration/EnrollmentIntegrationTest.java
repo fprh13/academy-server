@@ -428,17 +428,19 @@ class EnrollmentIntegrationTest extends IntegrationSupportTest {
 	@DisplayName("수강 신청 목록 조회 기능")
 	class GetEnrollmentsTest {
 		@Test
-		void 상태값이_없으면_수강대기와_수강확정_목록만_조회한다() {
+		void 상태값이_없으면_수강대기와_웨이팅과_수강확정_목록만_조회한다() {
 			// given
 			User creator = userRepository.save(UserFixture.USER_FIXTURE_1.createCreator());
 			User user = userRepository.save(UserFixture.USER_FIXTURE_2.create());
 			Course firstCourse = createSavedOpenCourse(creator);
 			Course secondCourse = createSavedOpenCourse(creator);
 			Course thirdCourse = createSavedOpenCourse(creator);
+			Course fourthCourse = createSavedOpenCourseWithCapacityOne(creator);
 
 			Enrollment pendingEnrollment = createSavedPendingEnrollment(firstCourse, user);
 			Enrollment confirmedEnrollment = createSavedConfirmedEnrollment(secondCourse, user, LocalDateTime.now());
 			createSavedCancelledEnrollment(thirdCourse, user, LocalDateTime.now().minusDays(1), LocalDateTime.now());
+			Enrollment waitingEnrollment = createSavedWaitingEnrollment(fourthCourse, user);
 
 			PagingRequest request = new PagingRequest(1, 10, null);
 
@@ -447,20 +449,20 @@ class EnrollmentIntegrationTest extends IntegrationSupportTest {
 
 			// then
 			assertAll(
-				() -> assertThat(response.content()).hasSize(2),
+				() -> assertThat(response.content()).hasSize(3),
 				() -> assertThat(response.page().number()).isEqualTo(1),
 				() -> assertThat(response.page().size()).isEqualTo(10),
-				() -> assertThat(response.page().totalElements()).isEqualTo(2),
+				() -> assertThat(response.page().totalElements()).isEqualTo(3),
 				() -> assertThat(response.page().totalPages()).isEqualTo(1),
 				() -> assertThat(response.page().hasNext()).isFalse(),
 				() -> assertThat(response.page().hasPrevious()).isFalse(),
 
 				() -> assertThat(response.content().stream()
 					.map(EnrollmentInfoResponse::state))
-					.containsExactly("PENDING", "CONFIRMED"),
+					.containsExactly("PENDING", "CONFIRMED", "WAITING"),
 				() -> assertThat(response.content().stream()
 					.map(EnrollmentInfoResponse::enrollmentId))
-					.containsExactly(pendingEnrollment.getId(), confirmedEnrollment.getId())
+					.containsExactly(pendingEnrollment.getId(), confirmedEnrollment.getId(), waitingEnrollment.getId())
 			);
 		}
 
@@ -522,6 +524,35 @@ class EnrollmentIntegrationTest extends IntegrationSupportTest {
 				() -> assertThat(response.page().totalElements()).isEqualTo(1)
 			);
 		}
+
+		@Test
+		void waiting_조건이면_웨이팅_목록만_조회한다() {
+			// given
+			User creator = userRepository.save(UserFixture.USER_FIXTURE_1.createCreator());
+			User user = userRepository.save(UserFixture.USER_FIXTURE_2.create());
+			Course pendingCourse = createSavedOpenCourse(creator);
+			Course confirmedCourse = createSavedOpenCourse(creator);
+			Course waitingCourse = createSavedOpenCourseWithCapacityOne(creator);
+			Course cancelledCourse = createSavedOpenCourse(creator);
+
+			createSavedPendingEnrollment(pendingCourse, user);
+			createSavedConfirmedEnrollment(confirmedCourse, user, LocalDateTime.now());
+			Enrollment waitingEnrollment = createSavedWaitingEnrollment(waitingCourse, user);
+			createSavedCancelledEnrollment(cancelledCourse, user, LocalDateTime.now().minusDays(1), LocalDateTime.now());
+
+			PagingRequest request = new PagingRequest(1, 10, null);
+
+			// when
+			PagingResponse<EnrollmentInfoResponse> response = enrollmentService.gets(request, "waiting", user.getId());
+
+			// then
+			assertAll(
+				() -> assertThat(response.content()).hasSize(1),
+				() -> assertThat(response.content().get(0).enrollmentId()).isEqualTo(waitingEnrollment.getId()),
+				() -> assertThat(response.content().get(0).state()).isEqualTo("WAITING"),
+				() -> assertThat(response.page().totalElements()).isEqualTo(1)
+			);
+		}
 	}
 
 	private Enrollment createSavedPendingEnrollment(Course course, User user) {
@@ -532,6 +563,12 @@ class EnrollmentIntegrationTest extends IntegrationSupportTest {
 		Enrollment enrollment = createSavedPendingEnrollment(course, user);
 		enrollment.confirmPayment(paidAt);
 		return enrollment;
+	}
+
+	private Enrollment createSavedWaitingEnrollment(Course course, User user) {
+		User competitor = userRepository.save(UserFixture.USER_FIXTURE_3.create());
+		enrollmentRepository.save(Enrollment.apply(course, competitor));
+		return enrollmentRepository.save(Enrollment.apply(course, user));
 	}
 
 	private Enrollment createSavedCancelledEnrollment(

@@ -19,6 +19,7 @@ import lombok.RequiredArgsConstructor;
 public class EnrollmentRepositoryImpl implements EnrollmentRepository {
 	private static final String STATE_CANCEL = "cancelled";
 	private static final String STATE_CONFIRM = "confirmed";
+	private static final String STATE_WAITING = "waiting";
 	private static final String SORT_CLASSMATE = "user.name";
 	private static final String SORT_CREATED = "createAt";
 
@@ -54,11 +55,15 @@ public class EnrollmentRepositoryImpl implements EnrollmentRepository {
 			return List.of(EnrollmentState.CANCELLED);
 		}
 
+		if (STATE_WAITING.equalsIgnoreCase(state)) {
+			return List.of(EnrollmentState.WAITING);
+		}
+
 		if (STATE_CONFIRM.equalsIgnoreCase(state)) {
 			return List.of(EnrollmentState.CONFIRMED);
 		}
 
-		return List.of(EnrollmentState.PENDING, EnrollmentState.CONFIRMED);
+		return List.of(EnrollmentState.PENDING, EnrollmentState.WAITING, EnrollmentState.CONFIRMED);
 	}
 
 	@Override
