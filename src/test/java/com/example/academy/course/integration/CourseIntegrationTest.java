@@ -136,6 +136,17 @@ class CourseIntegrationTest extends IntegrationSupportTest {
 			assertThatThrownBy(() -> courseService.getCourseDetail(courseId))
 				.isInstanceOf(NotFoundException.class);
 		}
+
+		@Test
+		void 초안_상태의_강의는_상세조회할_수_없다() {
+			//given
+			User creator = userRepository.save(UserFixture.USER_FIXTURE_1.createCreator());
+			Course draftCourse = createSavedDraftCourse(creator, CourseFixture.COURSE_FIXTURE_1);
+
+			//when & then
+			assertThatThrownBy(() -> courseService.getCourseDetail(draftCourse.getId()))
+				.isInstanceOf(NotFoundException.class);
+		}
 	}
 
 	@Nested

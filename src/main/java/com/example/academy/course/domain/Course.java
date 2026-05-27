@@ -10,6 +10,7 @@ import com.example.academy.common.domain.AggregateRoot;
 import com.example.academy.common.exception.BadRequestException;
 import com.example.academy.common.exception.ConflictException;
 import com.example.academy.common.exception.ForbiddenException;
+import com.example.academy.common.exception.NotFoundException;
 import com.example.academy.identity.domain.user.User;
 
 import jakarta.persistence.Column;
@@ -121,6 +122,12 @@ public class Course extends AggregateRoot<Course> implements AccessPolicy {
 	public void validateCanEnroll() {
 		if (state != CourseState.OPEN) {
 			throw new ConflictException("모집 중인 강의만 신청할 수 있습니다.");
+		}
+	}
+
+	public void validatePublished() {
+		if (state == CourseState.DRAFT) {
+			throw new NotFoundException(Course.class);
 		}
 	}
 

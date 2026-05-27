@@ -41,6 +41,7 @@ public class CourseService {
 		Course course = courseRepository.findByIdWithCreator(courseId)
 			.orElseThrow(() -> new NotFoundException(Course.class));
 
+		course.validatePublished();
 		return CourseDetailResponse.from(course);
 	}
 

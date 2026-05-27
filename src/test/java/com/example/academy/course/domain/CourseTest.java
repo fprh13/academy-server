@@ -13,6 +13,7 @@ import org.junit.jupiter.api.Test;
 import com.example.academy.common.exception.BadRequestException;
 import com.example.academy.common.exception.ConflictException;
 import com.example.academy.common.exception.ForbiddenException;
+import com.example.academy.common.exception.NotFoundException;
 import com.example.academy.identity.domain.user.User;
 import com.example.academy.support.fixture.CourseFixture;
 import com.example.academy.support.fixture.UserFixture;
@@ -292,6 +293,33 @@ class CourseTest {
 			//when & then
 			assertThatThrownBy(course::decreaseEnrollmentCount)
 				.isInstanceOf(ConflictException.class);
+		}
+	}
+
+	@Nested
+	@DisplayName("강의 공개 여부")
+	class PublicationVisibility {
+		@Test
+		void 초안_상태의_강의는_공개되지_않는다() {
+			//given
+			User creator = UserFixture.USER_FIXTURE_1.createCreator();
+			Course course = CourseFixture.COURSE_FIXTURE_1.create(creator);
+
+			//when & then
+			assertThatThrownBy(course::validatePublished)
+				.isInstanceOf(NotFoundException.class);
+		}
+
+		@Test
+		void 모집중인_강의는_공개된다() {
+			//given
+			User creator = UserFixture.USER_FIXTURE_1.createCreator();
+			Course course = CourseFixture.COURSE_FIXTURE_1.create(creator);
+			course.open();
+
+			//when & then
+			assertThatCode(course::validatePublished)
+				.doesNotThrowAnyException();
 		}
 	}
 }
