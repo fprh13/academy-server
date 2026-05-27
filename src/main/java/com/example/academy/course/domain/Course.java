@@ -89,7 +89,6 @@ public class Course extends AggregateRoot<Course> implements AccessPolicy {
 	}
 
 	public void increaseEnrollmentCount() {
-		validateCanEnroll();
 		capacity.increase();
 	}
 
@@ -123,10 +122,6 @@ public class Course extends AggregateRoot<Course> implements AccessPolicy {
 		if (state != CourseState.OPEN) {
 			throw new ConflictException("모집 중인 강의만 신청할 수 있습니다.");
 		}
-
-		if (capacity.isFull()) {
-			throw new ConflictException("정원이 가득 찼습니다.");
-		}
 	}
 
 	public boolean isOpen() {
@@ -135,6 +130,10 @@ public class Course extends AggregateRoot<Course> implements AccessPolicy {
 
 	public boolean isClosed() {
 		return state == CourseState.CLOSED;
+	}
+
+	public boolean isFull() {
+		return capacity.isFull();
 	}
 
 	@Override

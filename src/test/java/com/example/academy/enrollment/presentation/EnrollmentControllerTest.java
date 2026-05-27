@@ -70,7 +70,7 @@ class EnrollmentControllerTest extends RestDocsSupport {
 						.description("## 수강 신청 기능 \n"
 							+ "### 사용법 \n"
 							+ "- 인증된 수강생이 모집 중인 강의에 신청합니다.\n"
-							+ "- 정원이 가득 찬 강의는 신청할 수 없습니다.\n"
+							+ "- 정원이 가득 찬 강의이라면 웨이팅(대기열)으로 등록됩니다.\n"
 						)
 						.requestSchema(Schema.schema(ApplyEnrollmentRequest.class.getSimpleName()))
 						.requestFields(

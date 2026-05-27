@@ -45,15 +45,21 @@ public class Enrollment extends AggregateRoot<Enrollment> implements AccessPolic
 	@JoinColumn(name = "user_id", nullable = false)
 	private User user;
 
-	private Enrollment(Course course, User user) {
-		course.increaseEnrollmentCount();
-		this.state = EnrollmentState.PENDING;
+	private Enrollment(EnrollmentState state, Course course, User user) {
+		this.state = state;
 		this.course = course;
 		this.user = user;
 	}
 
 	public static Enrollment apply(Course course, User user) {
-		return new Enrollment(course, user);
+		course.validateCanEnroll();
+
+		if (course.isFull()) {
+			return new Enrollment(EnrollmentState.WAITING, course, user);
+		}
+
+		course.increaseEnrollmentCount();
+		return new Enrollment(EnrollmentState.PENDING, course, user);
 	}
 
 	public void cancelApplication() {
@@ -85,6 +91,10 @@ public class Enrollment extends AggregateRoot<Enrollment> implements AccessPolic
 
 	public boolean isPending() {
 		return state == EnrollmentState.PENDING;
+	}
+
+	public boolean isWaiting() {
+		return state == EnrollmentState.WAITING;
 	}
 
 	public boolean isConfirmed() {

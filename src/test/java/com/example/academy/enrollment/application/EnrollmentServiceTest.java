@@ -5,6 +5,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
 
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
@@ -23,10 +24,12 @@ import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.test.util.ReflectionTestUtils;
 
+import com.example.academy.common.exception.ConflictException;
 import com.example.academy.common.exception.ForbiddenException;
 import com.example.academy.common.exception.NotFoundException;
 import com.example.academy.common.presentation.dto.PagingRequest;
 import com.example.academy.common.presentation.dto.PagingResponse;
+import com.example.academy.course.domain.Capacity;
 import com.example.academy.course.domain.Course;
 import com.example.academy.course.domain.CourseRepository;
 import com.example.academy.enrollment.domain.Enrollment;
@@ -168,6 +171,36 @@ class EnrollmentServiceTest {
 			assertThat(enrollment.getCourse()).isSameAs(course);
 			assertThat(enrollment.getUser()).isSameAs(user);
 		}
+
+		@Test
+		void 정원이_가득_찼다면_웨이팅_상태의_수강_신청을_저장한다() {
+			// given
+			Course course = createOpenCourseWithCapacityOne(1L);
+			User firstUser = createUser(2L);
+			User secondUser = createUser(3L);
+			Enrollment.apply(course, firstUser);
+
+			Mockito.when(courseRepository.findById(course.getId()))
+				.thenReturn(Optional.of(course));
+			Mockito.when(userRepository.findById(secondUser.getId()))
+				.thenReturn(Optional.of(secondUser));
+			Mockito.when(enrollmentRepository.save(any(Enrollment.class)))
+				.thenAnswer(invocation -> invocation.getArgument(0));
+
+			// when
+			enrollmentService.apply(course.getId(), secondUser.getId());
+
+			// then
+			ArgumentCaptor<Enrollment> enrollmentCaptor = ArgumentCaptor.forClass(Enrollment.class);
+			Mockito.verify(enrollmentRepository, Mockito.times(1))
+				.save(enrollmentCaptor.capture());
+
+			Enrollment enrollment = enrollmentCaptor.getValue();
+			assertThat(enrollment.isWaiting()).isTrue();
+			assertThat(enrollment.getCourse()).isSameAs(course);
+			assertThat(enrollment.getUser()).isSameAs(secondUser);
+			assertThat(course.getCapacity().getCurrent()).isEqualTo(1);
+		}
 	}
 
 	@Nested
@@ -240,6 +273,21 @@ class EnrollmentServiceTest {
 			assertThatThrownBy(() -> enrollmentService.confirm(enrollmentId, userId))
 				.isInstanceOf(NotFoundException.class);
 		}
+
+		@Test
+		void 웨이팅_상태의_수강_신청은_확정할_수_없다() {
+			// given
+			Long enrollmentId = 10L;
+			Long userId = 2L;
+			Enrollment enrollment = createWaitingEnrollment(enrollmentId, userId);
+
+			Mockito.when(enrollmentRepository.findById(enrollmentId))
+				.thenReturn(Optional.of(enrollment));
+
+			// when & then
+			assertThatThrownBy(() -> enrollmentService.confirm(enrollmentId, userId))
+				.isInstanceOf(ConflictException.class);
+		}
 	}
 
 	@Nested
@@ -294,6 +342,21 @@ class EnrollmentServiceTest {
 			// when & then
 			assertThatThrownBy(() -> enrollmentService.cancel(enrollmentId, userId))
 				.isInstanceOf(NotFoundException.class);
+		}
+
+		@Test
+		void 웨이팅_상태의_수강_신청은_취소할_수_없다() {
+			// given
+			Long enrollmentId = 10L;
+			Long userId = 2L;
+			Enrollment enrollment = createWaitingEnrollment(enrollmentId, userId);
+
+			Mockito.when(enrollmentRepository.findById(enrollmentId))
+				.thenReturn(Optional.of(enrollment));
+
+			// when & then
+			assertThatThrownBy(() -> enrollmentService.cancel(enrollmentId, userId))
+				.isInstanceOf(ConflictException.class);
 		}
 	}
 
@@ -478,6 +541,14 @@ class EnrollmentServiceTest {
 		return enrollment;
 	}
 
+	private Enrollment createWaitingEnrollment(Long enrollmentId, Long userId) {
+		Course course = createOpenCourseWithCapacityOne(1L);
+		Enrollment.apply(course, createUser(999L));
+		Enrollment enrollment = Enrollment.apply(course, createUser(userId));
+		ReflectionTestUtils.setField(enrollment, "id", enrollmentId);
+		return enrollment;
+	}
+
 	private Enrollment createConfirmedEnrollment(
 		Long enrollmentId,
 		Long userId,
@@ -496,6 +567,22 @@ class EnrollmentServiceTest {
 
 	private Course createOpenCourse(Long courseId, User creator, CourseFixture courseFixture) {
 		Course course = courseFixture.create(creator);
+		course.open();
+		ReflectionTestUtils.setField(course, "id", courseId);
+		return course;
+	}
+
+	private Course createOpenCourseWithCapacityOne(Long courseId) {
+		User creator = createCreator(1L, UserFixture.USER_FIXTURE_1);
+		Course course = Course.of(
+			"정원 1명 강의",
+			"웨이팅 테스트용 강의입니다.",
+			100_000,
+			new Capacity(1),
+			LocalDate.of(2026, 6, 1),
+			LocalDate.of(2026, 6, 30),
+			creator
+		);
 		course.open();
 		ReflectionTestUtils.setField(course, "id", courseId);
 		return course;

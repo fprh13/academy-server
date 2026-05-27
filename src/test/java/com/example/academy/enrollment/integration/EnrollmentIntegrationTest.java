@@ -107,7 +107,7 @@ class EnrollmentIntegrationTest extends IntegrationSupportTest {
 		}
 
 		@Test
-		void 정원이_가득_찼다면_예외를_반환한다() {
+		void 정원이_가득_찼다면_WAITING_상태로_수강_신청된다() {
 			// given
 			User creator = userRepository.save(UserFixture.USER_FIXTURE_1.createCreator());
 			User firstUser = userRepository.save(UserFixture.USER_FIXTURE_2.create());
@@ -116,9 +116,20 @@ class EnrollmentIntegrationTest extends IntegrationSupportTest {
 
 			enrollmentService.apply(course.getId(), firstUser.getId());
 
-			// when & then
-			assertThatThrownBy(() -> enrollmentService.apply(course.getId(), secondUser.getId()))
-				.isInstanceOf(ConflictException.class);
+			// when
+			Long waitingEnrollmentId = enrollmentService.apply(course.getId(), secondUser.getId());
+
+			// then
+			Enrollment waitingEnrollment = enrollmentRepository.findById(waitingEnrollmentId)
+				.orElseThrow(() -> new AssertionError("웨이팅 수강 신청이 저장되지 않았습니다."));
+			Course savedCourse = courseRepository.findById(course.getId())
+				.orElseThrow(() -> new AssertionError("강의가 저장되지 않았습니다."));
+
+			assertAll(
+				() -> assertThat(waitingEnrollment.getState()).isEqualTo(EnrollmentState.WAITING),
+				() -> assertThat(waitingEnrollment.getUser().getId()).isEqualTo(secondUser.getId()),
+				() -> assertThat(savedCourse.getCapacity().getCurrent()).isEqualTo(1)
+			);
 		}
 	}
 

@@ -53,16 +53,21 @@ class EnrollmentTest {
 		}
 
 		@Test
-		void 정원이_가득_찼다면_수강_신청할_수_없다() {
+		void 정원이_가득_찼다면_WAITING_상태로_수강_신청된다() {
 			// given
 			Course course = openCourseWithCapacityOne();
 			User firstUser = UserFixture.USER_FIXTURE_2.create();
 			User secondUser = UserFixture.USER_FIXTURE_3.create();
 			Enrollment.apply(course, firstUser);
 
-			// when & then
-			assertThatThrownBy(() -> Enrollment.apply(course, secondUser))
-				.isInstanceOf(ConflictException.class);
+			// when
+			Enrollment enrollment = Enrollment.apply(course, secondUser);
+
+			// then
+			assertThat(enrollment.isWaiting()).isTrue();
+			assertThat(enrollment.getCourse()).isSameAs(course);
+			assertThat(enrollment.getUser()).isSameAs(secondUser);
+			assertThat(course.getCapacity().getCurrent()).isEqualTo(1);
 		}
 	}
 
@@ -89,6 +94,16 @@ class EnrollmentTest {
 
 			// when & then
 			assertThatThrownBy(() -> enrollment.confirmPayment(PAID_AT.plusHours(1)))
+				.isInstanceOf(ConflictException.class);
+		}
+
+		@Test
+		void 웨이팅_상태의_수강_신청은_결제를_확정할_수_없다() {
+			// given
+			Enrollment enrollment = createWaitingEnrollment();
+
+			// when & then
+			assertThatThrownBy(() -> enrollment.confirmPayment(PAID_AT))
 				.isInstanceOf(ConflictException.class);
 		}
 	}
@@ -128,6 +143,16 @@ class EnrollmentTest {
 		void 결제_확정_상태의_수강_신청_취소할_수_없다() {
 			// given
 			Enrollment enrollment = createConfirmedEnrollment();
+
+			// when & then
+			assertThatThrownBy(enrollment::cancelApplication)
+				.isInstanceOf(ConflictException.class);
+		}
+
+		@Test
+		void 웨이팅_상태의_수강_신청은_취소할_수_없다() {
+			// given
+			Enrollment enrollment = createWaitingEnrollment();
 
 			// when & then
 			assertThatThrownBy(enrollment::cancelApplication)
@@ -225,6 +250,12 @@ class EnrollmentTest {
 
 	private static Enrollment createPendingEnrollment() {
 		return Enrollment.apply(openCourse(), UserFixture.USER_FIXTURE_2.create());
+	}
+
+	private static Enrollment createWaitingEnrollment() {
+		Course course = openCourseWithCapacityOne();
+		Enrollment.apply(course, UserFixture.USER_FIXTURE_2.create());
+		return Enrollment.apply(course, UserFixture.USER_FIXTURE_3.create());
 	}
 
 	private static Enrollment createConfirmedEnrollment() {

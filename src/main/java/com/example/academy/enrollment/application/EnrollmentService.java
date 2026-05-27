@@ -29,8 +29,8 @@ public class EnrollmentService {
 	private final UserRepository userRepository;
 
 	@Transactional
-	public Long apply(Long CourseId, Long userId) {
-		Course course = courseRepository.findById(CourseId)
+	public Long apply(Long courseId, Long userId) {
+		Course course = courseRepository.findById(courseId)
 			.orElseThrow(() -> new NotFoundException(Course.class));
 		User user = userRepository.findById(userId)
 			.orElseThrow(() -> new NotFoundException(User.class));
