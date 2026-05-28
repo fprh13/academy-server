@@ -12,6 +12,7 @@ import org.springframework.security.config.annotation.authentication.configurati
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
+import org.springframework.security.config.annotation.web.configurers.HeadersConfigurer;
 import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
@@ -46,16 +47,22 @@ public class SecurityConfig {
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
         PathPatternRequestMatcher.Builder mvc = PathPatternRequestMatcher.withDefaults();
         http
-                .cors(Customizer.withDefaults())
-                .csrf(AbstractHttpConfigurer::disable)
-                .formLogin(AbstractHttpConfigurer::disable)
-                .httpBasic(AbstractHttpConfigurer::disable)
-                .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
+			.cors(Customizer.withDefaults())
+			.csrf(AbstractHttpConfigurer::disable)
+			.formLogin(AbstractHttpConfigurer::disable)
+			.httpBasic(AbstractHttpConfigurer::disable)
+			.headers(headers -> headers
+				.frameOptions(HeadersConfigurer.FrameOptionsConfig::sameOrigin)
+			)
+			.sessionManagement(session -> session
+				.sessionCreationPolicy(SessionCreationPolicy.STATELESS)
+			)
 
-                .authorizeHttpRequests(auth -> auth
+			.authorizeHttpRequests(auth -> auth
 
 					//== 전체 공개 ==//
 					.requestMatchers(SWAGGER_PATTERNS).permitAll()
+					.requestMatchers("/h2-console/**").permitAll()
 					.requestMatchers(mvc.matcher(GET, "/health")).permitAll()
 
 					.requestMatchers(
