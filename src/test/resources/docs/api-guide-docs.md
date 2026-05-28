@@ -58,7 +58,11 @@ Authorization: Bearer eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJjcmVhdG9yIiwicm9sZSI6IlJPT
 
 ---
 
-### 📚 더미 데이터 정보
+## 📚 더미 데이터 정보
+
+<details>
+
+<summary><strong>상세 보기</strong></summary>
 
 - 강사(`creator`)는 총 10개의 강의를 보유하고 있습니다.
 - 수강생(`classmate`)은 아래와 같은 수강 신청 이력을 가지고 있습니다.
@@ -71,6 +75,8 @@ Authorization: Bearer eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJjcmVhdG9yIiwicm9sZSI6IlJPT
 | 4번 강의 | `CONFIRMED` |
 
 위 데이터를 기반으로 수강 신청, 취소, 목록 조회 등의 시나리오를 테스트할 수 있습니다.
+
+</details>
 
 ---
 
