@@ -197,7 +197,10 @@ class CourseControllerTest extends RestDocsSupport {
 					ResourceDocumentation.resource(ResourceSnippetParameters.builder()
 						.tag(BASE_TAG)
 						.summary("강의 상세 조회")
-						.description("## 강의 상세 기능")
+						.description("## 강의 상세 조회 기능 \n"
+							+ "### 사용법 \n"
+							+ "- 공개 되지 않은 DRAFT 초안 상태 강의는 조회할 수 없습니다.\n"
+						)
 						.pathParameters(
 							parameterWithName("courseId").description("조회할 강의의 PK입니다.")
 						)
