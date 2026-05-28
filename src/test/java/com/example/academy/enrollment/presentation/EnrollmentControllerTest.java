@@ -4,6 +4,7 @@ import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.springframework.restdocs.request.RequestDocumentation.parameterWithName;
 import static org.springframework.restdocs.payload.PayloadDocumentation.fieldWithPath;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
@@ -311,7 +312,7 @@ class EnrollmentControllerTest extends RestDocsSupport {
 
 			// when
 			ResultActions actions = mockMvc.perform(
-				post(BASE_URI + "/{enrollmentId}/cancel", enrollmentId)
+				delete(BASE_URI + "/{enrollmentId}/cancel", enrollmentId)
 					.contentType(MediaType.APPLICATION_JSON));
 
 			// then
@@ -348,7 +349,7 @@ class EnrollmentControllerTest extends RestDocsSupport {
 
 			// when
 			ResultActions actions = mockMvc.perform(
-				post(BASE_URI + "/{enrollmentId}/cancel", enrollmentId)
+				delete(BASE_URI + "/{enrollmentId}/cancel", enrollmentId)
 					.contentType(MediaType.APPLICATION_JSON));
 
 			// then
@@ -377,7 +378,7 @@ class EnrollmentControllerTest extends RestDocsSupport {
 
 			// when
 			ResultActions actions = mockMvc.perform(
-				post(BASE_URI + "/{enrollmentId}/cancel", enrollmentId)
+				delete(BASE_URI + "/{enrollmentId}/cancel", enrollmentId)
 					.contentType(MediaType.APPLICATION_JSON));
 
 			// then
@@ -559,7 +560,7 @@ class EnrollmentControllerTest extends RestDocsSupport {
 
 			// when
 			ResultActions actions = mockMvc.perform(
-				post(BASE_URI + "/{enrollmentId}/wait-cancel", enrollmentId)
+				delete(BASE_URI + "/{enrollmentId}/wait-cancel", enrollmentId)
 					.contentType(MediaType.APPLICATION_JSON));
 
 			// then
@@ -596,7 +597,7 @@ class EnrollmentControllerTest extends RestDocsSupport {
 
 			// when
 			ResultActions actions = mockMvc.perform(
-				post(BASE_URI + "/{enrollmentId}/wait-cancel", enrollmentId)
+				delete(BASE_URI + "/{enrollmentId}/wait-cancel", enrollmentId)
 					.contentType(MediaType.APPLICATION_JSON));
 
 			// then
@@ -625,7 +626,7 @@ class EnrollmentControllerTest extends RestDocsSupport {
 
 			// when
 			ResultActions actions = mockMvc.perform(
-				post(BASE_URI + "/{enrollmentId}/wait-cancel", enrollmentId)
+				delete(BASE_URI + "/{enrollmentId}/wait-cancel", enrollmentId)
 					.contentType(MediaType.APPLICATION_JSON));
 
 			// then
@@ -654,7 +655,7 @@ class EnrollmentControllerTest extends RestDocsSupport {
 
 			// when
 			ResultActions actions = mockMvc.perform(
-				post(BASE_URI + "/{enrollmentId}/wait-cancel", enrollmentId)
+				delete(BASE_URI + "/{enrollmentId}/wait-cancel", enrollmentId)
 					.contentType(MediaType.APPLICATION_JSON));
 
 			// then

@@ -96,8 +96,8 @@ public class SecurityConfig {
 						mvc.matcher(GET, ENROLLMENT_URI),
 						mvc.matcher(POST, ENROLLMENT_URI),
 						mvc.matcher(POST, ENROLLMENT_URI + "/{enrollmentId}/confirm"),
-						mvc.matcher(POST, ENROLLMENT_URI + "/{enrollmentId}/cancel"),
-						mvc.matcher(POST, ENROLLMENT_URI + "/{enrollmentId}/wait-cancel"),
+						mvc.matcher(DELETE, ENROLLMENT_URI + "/{enrollmentId}/cancel"),
+						mvc.matcher(DELETE, ENROLLMENT_URI + "/{enrollmentId}/wait-cancel"),
 						mvc.matcher(POST, ENROLLMENT_URI + "/{enrollmentId}/refund")
 					).authenticated()
 

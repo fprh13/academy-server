@@ -1,6 +1,7 @@
 package com.example.academy.enrollment.presentation;
 
 import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.ModelAttribute;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -39,13 +40,13 @@ public class EnrollmentController {
 		return ResponseEntity.ok(ApiResponse.of());
 	}
 
-	@PostMapping("/{enrollmentId}/cancel")
+	@DeleteMapping("/{enrollmentId}/cancel")
 	public ResponseEntity<ApiResponse<Void>> cancel(@PathVariable Long enrollmentId, User user) {
 		enrollmentService.cancel(enrollmentId, user.getId());
 		return ResponseEntity.ok(ApiResponse.of());
 	}
 
-	@PostMapping("/{enrollmentId}/wait-cancel")
+	@DeleteMapping("/{enrollmentId}/wait-cancel")
 	public ResponseEntity<ApiResponse<Void>> cancelWaiting(@PathVariable Long enrollmentId, User user) {
 		enrollmentService.cancelWaiting(enrollmentId, user.getId());
 		return ResponseEntity.ok(ApiResponse.of());
