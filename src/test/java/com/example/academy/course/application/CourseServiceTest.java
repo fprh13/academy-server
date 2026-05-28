@@ -191,6 +191,7 @@ class CourseServiceTest {
 				() -> assertThat(response.price()).isEqualTo(course.getPrice()),
 				() -> assertThat(response.maxCapacity()).isEqualTo(course.getCapacity().getMax()),
 				() -> assertThat(response.enrollmentCount()).isEqualTo(course.getCapacity().getCurrent()),
+				() -> assertThat(response.state()).isEqualTo(course.getState().name()),
 				() -> assertThat(response.startDate()).isEqualTo(course.getStartDate()),
 				() -> assertThat(response.endDate()).isEqualTo(course.getEndDate()),
 				() -> assertThat(response.creatorInfo().creatorId()).isEqualTo(creator.getId()),
@@ -206,6 +207,22 @@ class CourseServiceTest {
 
 			Mockito.when(courseRepository.findByIdWithCreator(courseId))
 				.thenReturn(Optional.empty());
+
+			//when & then
+			assertThatThrownBy(() -> courseService.getCourseDetail(courseId))
+				.isInstanceOf(NotFoundException.class);
+		}
+
+		@Test
+		void 초안_상태의_강의는_상세조회할_수_없다() {
+			//given
+			User creator = createCreator();
+			Course course = CourseFixture.COURSE_FIXTURE_1.create(creator);
+			ReflectionTestUtils.setField(course, "id", 10L);
+			Long courseId = course.getId();
+
+			Mockito.when(courseRepository.findByIdWithCreator(courseId))
+				.thenReturn(Optional.of(course));
 
 			//when & then
 			assertThatThrownBy(() -> courseService.getCourseDetail(courseId))

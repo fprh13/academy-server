@@ -38,4 +38,11 @@ public interface JpaEnrollmentRepository extends JpaRepository<Enrollment, Long>
 		@Param("state") EnrollmentState state,
 		Pageable pageable
 	);
+
+	@Query("SELECT COUNT(e) > 0 FROM Enrollment e WHERE e.course.id = :courseId AND e.user.id = :userId AND e.state <> :state")
+	boolean existsActiveEnrollment(
+		@Param("courseId") Long courseId,
+		@Param("userId") Long userId,
+		@Param("state") EnrollmentState state
+	);
 }

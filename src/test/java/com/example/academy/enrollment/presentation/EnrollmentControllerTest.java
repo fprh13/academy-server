@@ -4,6 +4,7 @@ import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.springframework.restdocs.request.RequestDocumentation.parameterWithName;
 import static org.springframework.restdocs.payload.PayloadDocumentation.fieldWithPath;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
@@ -145,9 +146,9 @@ class EnrollmentControllerTest extends RestDocsSupport {
 		}
 
 		@Test
-		void 수강_신청_4XX_정원_초과() throws Exception {
+		void 수강_신청_4XX_이미_신청한_강의() throws Exception {
 			// given
-			String errorMessage = "정원이 가득 찼습니다.";
+			String errorMessage = "이미 신청한 강의입니다.";
 			ApplyEnrollmentRequest requestDto = new ApplyEnrollmentRequest(1L);
 
 			Mockito.doThrow(new ConflictException(errorMessage))
@@ -311,7 +312,7 @@ class EnrollmentControllerTest extends RestDocsSupport {
 
 			// when
 			ResultActions actions = mockMvc.perform(
-				post(BASE_URI + "/{enrollmentId}/cancel", enrollmentId)
+				delete(BASE_URI + "/{enrollmentId}/cancel", enrollmentId)
 					.contentType(MediaType.APPLICATION_JSON));
 
 			// then
@@ -348,7 +349,7 @@ class EnrollmentControllerTest extends RestDocsSupport {
 
 			// when
 			ResultActions actions = mockMvc.perform(
-				post(BASE_URI + "/{enrollmentId}/cancel", enrollmentId)
+				delete(BASE_URI + "/{enrollmentId}/cancel", enrollmentId)
 					.contentType(MediaType.APPLICATION_JSON));
 
 			// then
@@ -377,7 +378,7 @@ class EnrollmentControllerTest extends RestDocsSupport {
 
 			// when
 			ResultActions actions = mockMvc.perform(
-				post(BASE_URI + "/{enrollmentId}/cancel", enrollmentId)
+				delete(BASE_URI + "/{enrollmentId}/cancel", enrollmentId)
 					.contentType(MediaType.APPLICATION_JSON));
 
 			// then
@@ -559,7 +560,7 @@ class EnrollmentControllerTest extends RestDocsSupport {
 
 			// when
 			ResultActions actions = mockMvc.perform(
-				post(BASE_URI + "/{enrollmentId}/wait-cancel", enrollmentId)
+				delete(BASE_URI + "/{enrollmentId}/wait-cancel", enrollmentId)
 					.contentType(MediaType.APPLICATION_JSON));
 
 			// then
@@ -596,7 +597,7 @@ class EnrollmentControllerTest extends RestDocsSupport {
 
 			// when
 			ResultActions actions = mockMvc.perform(
-				post(BASE_URI + "/{enrollmentId}/wait-cancel", enrollmentId)
+				delete(BASE_URI + "/{enrollmentId}/wait-cancel", enrollmentId)
 					.contentType(MediaType.APPLICATION_JSON));
 
 			// then
@@ -625,7 +626,7 @@ class EnrollmentControllerTest extends RestDocsSupport {
 
 			// when
 			ResultActions actions = mockMvc.perform(
-				post(BASE_URI + "/{enrollmentId}/wait-cancel", enrollmentId)
+				delete(BASE_URI + "/{enrollmentId}/wait-cancel", enrollmentId)
 					.contentType(MediaType.APPLICATION_JSON));
 
 			// then
@@ -654,7 +655,7 @@ class EnrollmentControllerTest extends RestDocsSupport {
 
 			// when
 			ResultActions actions = mockMvc.perform(
-				post(BASE_URI + "/{enrollmentId}/wait-cancel", enrollmentId)
+				delete(BASE_URI + "/{enrollmentId}/wait-cancel", enrollmentId)
 					.contentType(MediaType.APPLICATION_JSON));
 
 			// then
@@ -718,15 +719,15 @@ class EnrollmentControllerTest extends RestDocsSupport {
 						.summary("수강 신청 목록 조회")
 						.description("## 수강 신청 목록 조회 기능 \n"
 							+ "### 사용법 \n"
-							+ "- 상태 조건과 페이지 조건트으로 본인의 수강 신청 목록을 조회합니다.\n"
+							+ "- 상태 조건과 페이지 조건으로 본인의 수강 신청 목록을 조회합니다.\n"
 							+ "- state를 생략하면 결제 대기, 결제 확정, 웨이팅 목록을 함께 조회합니다.\n"
 							+ "- state가 confirmed면 결제 확정 목록만 조회합니다.\n"
-							+ "- state가 confirmed면 결제 취소 목록만 조회합니다.\n"
+							+ "- state가 cancelled면 결제 취소 목록만 조회합니다.\n"
 							+ "- state가 waiting면 웨이팅 목록만 조회합니다.\n"
 						)
 						.queryParameters(
 							parameterWithName("state").description(
-									"수강 신청 상태 필터입니다. 생략하면 수강 대기 확정, 웨이팅만, confirmed면 확정 목록만, cancel이면 취소 목록만, waiting이면 웨이팅 목록만 조회합니다.")
+									"수강 신청 상태 필터입니다. 생략하면 수강 대기 확정, 웨이팅만, confirmed면 확정 목록만, cancelled이면 취소 목록만, waiting이면 웨이팅 목록만 조회합니다.")
 								.optional(),
 							parameterWithName("page").description("조회할 페이지 번호입니다. 1부터 시작합니다.").optional(),
 							parameterWithName("size").description("페이지 크기입니다. 기본값은 10입니다.").optional()

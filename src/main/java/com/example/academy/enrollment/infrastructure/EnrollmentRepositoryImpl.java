@@ -83,4 +83,13 @@ public class EnrollmentRepositoryImpl implements EnrollmentRepository {
 			PageRequest.of(0, 1, Sort.by(Sort.Direction.ASC, SORT_CREATED))
 		).stream().findFirst();
 	}
+
+	@Override
+	public boolean existsActiveEnrollment(Long courseId, Long userId) {
+		return jpaEnrollmentRepository.existsActiveEnrollment(
+			courseId,
+			userId,
+			EnrollmentState.CANCELLED
+		);
+	}
 }

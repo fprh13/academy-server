@@ -11,10 +11,11 @@ public record CourseSummaryResponse(
 	Integer price,
 	Integer maxCapacity,
 	Integer enrollmentCount,
+	String state,
 	LocalDate startDate,
 	LocalDate endDate
 ) {
-	public static CourseSummaryResponse of(Course course) {
+	public static CourseSummaryResponse from(Course course) {
 		return new CourseSummaryResponse(
 			course.getId(),
 			course.getCreator().getName(),
@@ -22,6 +23,7 @@ public record CourseSummaryResponse(
 			course.getPrice(),
 			course.getCapacity().getMax(),
 			course.getCapacity().getCurrent(),
+			course.getState().name(),
 			course.getStartDate(),
 			course.getEndDate()
 		);

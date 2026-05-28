@@ -135,6 +135,47 @@ class EnrollmentIntegrationTest extends IntegrationSupportTest {
 				() -> assertThat(savedCourse.getCapacity().getCurrent()).isEqualTo(1)
 			);
 		}
+
+		@Test
+		void 취소되지_않은_기존_수강_신청이_있다면_같은_강의에_다시_신청할_수_없다() {
+			// given
+			User creator = userRepository.save(UserFixture.USER_FIXTURE_1.createCreator());
+			User user = userRepository.save(UserFixture.USER_FIXTURE_2.create());
+			Course course = createSavedOpenCourse(creator);
+
+			enrollmentService.apply(course.getId(), user.getId());
+
+			// when & then
+			assertThatThrownBy(() -> enrollmentService.apply(course.getId(), user.getId()))
+				.isInstanceOf(ConflictException.class)
+				.hasMessage("이미 신청한 강의입니다.");
+		}
+
+		@Test
+		void 취소된_수강_신청만_있다면_같은_강의에_다시_신청할_수_있다() {
+			// given
+			User creator = userRepository.save(UserFixture.USER_FIXTURE_1.createCreator());
+			User user = userRepository.save(UserFixture.USER_FIXTURE_2.create());
+			Course course = createSavedOpenCourse(creator);
+
+			Long firstEnrollmentId = enrollmentService.apply(course.getId(), user.getId());
+			enrollmentService.cancel(firstEnrollmentId, user.getId());
+
+			// when
+			Long reAppliedEnrollmentId = enrollmentService.apply(course.getId(), user.getId());
+
+			// then
+			Enrollment reAppliedEnrollment = enrollmentRepository.findById(reAppliedEnrollmentId)
+				.orElseThrow(() -> new AssertionError("재신청한 수강 신청이 저장되지 않았습니다."));
+			Course savedCourse = courseRepository.findById(course.getId())
+				.orElseThrow(() -> new AssertionError("강의가 저장되지 않았습니다."));
+
+			assertAll(
+				() -> assertThat(reAppliedEnrollment.getState()).isEqualTo(EnrollmentState.PENDING),
+				() -> assertThat(reAppliedEnrollment.getUser().getId()).isEqualTo(user.getId()),
+				() -> assertThat(savedCourse.getCapacity().getCurrent()).isEqualTo(1)
+			);
+		}
 	}
 
 	@Nested

@@ -41,13 +41,14 @@ public class CourseService {
 		Course course = courseRepository.findByIdWithCreator(courseId)
 			.orElseThrow(() -> new NotFoundException(Course.class));
 
+		course.validatePublished();
 		return CourseDetailResponse.from(course);
 	}
 
 	public PagingResponse<CourseSummaryResponse> getCourses(String state, PagingRequest request) {
 		return PagingResponse.from(
 			courseRepository.findPageByCourseStateIn(state, request.page(), request.size(), request.sort())
-				.map(CourseSummaryResponse::of)
+				.map(CourseSummaryResponse::from)
 		);
 	}
 

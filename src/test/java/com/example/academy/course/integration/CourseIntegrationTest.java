@@ -118,6 +118,7 @@ class CourseIntegrationTest extends IntegrationSupportTest {
 				() -> assertThat(response.price()).isEqualTo(savedCourse.getPrice()),
 				() -> assertThat(response.maxCapacity()).isEqualTo(savedCourse.getCapacity().getMax()),
 				() -> assertThat(response.enrollmentCount()).isEqualTo(savedCourse.getCapacity().getCurrent()),
+				() -> assertThat(response.state()).isEqualTo(savedCourse.getState().name()),
 				() -> assertThat(response.startDate()).isEqualTo(savedCourse.getStartDate()),
 				() -> assertThat(response.endDate()).isEqualTo(savedCourse.getEndDate()),
 				() -> assertThat(response.creatorInfo().creatorId()).isEqualTo(creator.getId()),
@@ -133,6 +134,17 @@ class CourseIntegrationTest extends IntegrationSupportTest {
 
 			//when & then
 			assertThatThrownBy(() -> courseService.getCourseDetail(courseId))
+				.isInstanceOf(NotFoundException.class);
+		}
+
+		@Test
+		void 초안_상태의_강의는_상세조회할_수_없다() {
+			//given
+			User creator = userRepository.save(UserFixture.USER_FIXTURE_1.createCreator());
+			Course draftCourse = createSavedDraftCourse(creator, CourseFixture.COURSE_FIXTURE_1);
+
+			//when & then
+			assertThatThrownBy(() -> courseService.getCourseDetail(draftCourse.getId()))
 				.isInstanceOf(NotFoundException.class);
 		}
 	}

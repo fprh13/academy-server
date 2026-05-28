@@ -13,13 +13,17 @@ spring:
       enabled: true
 
   jpa:
+    defer-datasource-initialization: true
     hibernate:
-      ddl-auto: update
+      ddl-auto: create-drop
     show-sql: false
     properties:
       hibernate:
         format_sql: true
         default_batch_fetch_size: 100
+  sql:
+    init:
+      mode: always
 
 jwt:
   access-secret-key: accessabcdefghijklmnopqrstuvwxyz
@@ -46,6 +50,7 @@ spring:
       enabled: true
 
   jpa:
+    defer-datasource-initialization: true
     hibernate:
       ddl-auto: create-drop
     show-sql: true
@@ -53,6 +58,10 @@ spring:
       hibernate:
         format_sql: true
         default_batch_fetch_size: 100
+
+  sql:
+    init:
+      mode: always
 
 jwt:
   access-secret-key: accessabcdefghijklmnopqrstuvwxyz
@@ -86,6 +95,10 @@ spring:
       hibernate:
         format_sql: true
         default_batch_fetch_size: 100
+
+  sql:
+    init:
+      mode: never
 
 jwt:
   access-secret-key: accessabcdefghijklmnopqrstuvwxyz
