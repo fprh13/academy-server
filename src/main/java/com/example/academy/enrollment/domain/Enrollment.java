@@ -1,0 +1,122 @@
+package com.example.academy.enrollment.domain;
+
+import java.time.LocalDateTime;
+
+import com.example.academy.common.domain.AccessPolicy;
+import com.example.academy.common.domain.AggregateRoot;
+import com.example.academy.common.exception.BadRequestException;
+import com.example.academy.common.exception.ConflictException;
+import com.example.academy.course.domain.Course;
+import com.example.academy.identity.domain.user.User;
+
+import jakarta.persistence.Column;
+import jakarta.persistence.Entity;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
+import jakarta.persistence.FetchType;
+import jakarta.persistence.JoinColumn;
+import jakarta.persistence.ManyToOne;
+import jakarta.persistence.Table;
+import lombok.AccessLevel;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+
+@Entity
+@Table(name = "enrollments")
+@Getter
+@NoArgsConstructor(access = AccessLevel.PROTECTED)
+public class Enrollment extends AggregateRoot<Enrollment> implements AccessPolicy {
+
+	@Enumerated(EnumType.STRING)
+	@Column(name = "state", length = 20, nullable = false)
+	private EnrollmentState state;
+
+	@Column(name = "paid_at")
+	private LocalDateTime paidAt;
+
+	@Column(name = "cancelled_at")
+	private LocalDateTime cancelledAt;
+
+	@ManyToOne(fetch = FetchType.LAZY)
+	@JoinColumn(name = "course_id", nullable = false)
+	private Course course;
+
+	@ManyToOne(fetch = FetchType.LAZY)
+	@JoinColumn(name = "user_id", nullable = false)
+	private User user;
+
+	private Enrollment(EnrollmentState state, Course course, User user) {
+		this.state = state;
+		this.course = course;
+		this.user = user;
+	}
+
+	public static Enrollment apply(Course course, User user) {
+		course.validateCanEnroll();
+
+		if (course.isFull()) {
+			return new Enrollment(EnrollmentState.WAITING, course, user);
+		}
+
+		course.increaseEnrollmentCount();
+		return new Enrollment(EnrollmentState.PENDING, course, user);
+	}
+
+	public void cancelApplication() {
+		if (state != EnrollmentState.PENDING) {
+			throw new ConflictException("결제 대기 상태의 수강 신청만 취소할 수 있습니다.");
+		}
+		this.course.decreaseEnrollmentCount();
+	}
+
+	public void confirmPayment(LocalDateTime paidAt) {
+		if (state != EnrollmentState.PENDING) {
+			throw new ConflictException("결제 대기 상태의 수강 신청만 결제 확정할 수 있습니다.");
+		}
+		this.state = EnrollmentState.CONFIRMED;
+		this.paidAt = paidAt;
+	}
+
+	public void cancelConfirmed(LocalDateTime now) {
+		if (state != EnrollmentState.CONFIRMED) {
+			throw new ConflictException("결제 확정 상태의 수강 신청만 취소할 수 있습니다.");
+		}
+		if (!EnrollmentCancelPolicy.canCancel(paidAt, now)) {
+			throw new BadRequestException("결제 후 7일이 지나 취소할 수 없습니다.");
+		}
+		this.state = EnrollmentState.CANCELLED;
+		this.cancelledAt = now;
+		this.course.decreaseEnrollmentCount();
+	}
+
+	public void cancelWaiting() {
+		if (state != EnrollmentState.WAITING) {
+			throw new ConflictException("웨이팅 상태의 수강 신청만 취소할 수 있습니다.");
+		}
+	}
+
+	public void promoteToPending() {
+		this.state = EnrollmentState.PENDING;
+	}
+
+	public boolean isPending() {
+		return state == EnrollmentState.PENDING;
+	}
+
+	public boolean isWaiting() {
+		return state == EnrollmentState.WAITING;
+	}
+
+	public boolean isConfirmed() {
+		return state == EnrollmentState.CONFIRMED;
+	}
+
+	public boolean isCancelled() {
+		return state == EnrollmentState.CANCELLED;
+	}
+
+	@Override
+	public boolean canAccess(Long userId) {
+		return this.user.getId().equals(userId);
+	}
+}

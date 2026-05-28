@@ -1,0 +1,5 @@
+blank_issues_enabled: false
+contact_links:
+  - name: ❓ 질문 / 논의 / 아이디어
+    url: https://github.com/fprh13/academy/discussions
+    about: 이슈가 아닌 질문 / 논의 / 아이디어는 Discussions를 이용해주세요

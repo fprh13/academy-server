@@ -1,0 +1,18 @@
+package com.example.academy.enrollment.domain;
+
+import java.util.Optional;
+
+import org.springframework.data.domain.Page;
+
+public interface EnrollmentRepository {
+
+	Enrollment save(Enrollment enrollment);
+	void deleteById(Long enrollmentId);
+
+	boolean existsActiveEnrollment(Long courseId, Long userId);
+	Optional<Enrollment> findById(Long enrollmentId);
+	Page<Enrollment> findPageByUserIdAndStateIn(Long userId, String state, int page, int size, String sort);
+	Page<Enrollment> findPageByCourseIdAndState(Long courseId, int page, int size);
+
+	Optional<Enrollment> findOldestWaitingByCourseIdForUpdate(Long courseId);
+}
